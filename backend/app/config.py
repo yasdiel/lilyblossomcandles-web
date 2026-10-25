@@ -35,6 +35,11 @@ def _env_path(name: str, default: Path) -> Path:
     return path.resolve()
 
 
+def _env_choice(name: str, default: str, choices: set[str]) -> str:
+    value = os.getenv(name, default).strip().lower()
+    return value if value in choices else default
+
+
 @dataclass(frozen=True)
 class Settings:
     mongo_url: str
@@ -48,6 +53,7 @@ class Settings:
     max_upload_mb: int
     cors_origins: tuple[str, ...]
     cookie_secure: bool
+    cookie_samesite: str = "strict"
     cookie_name: str = "lily_admin_session"
 
     @property
@@ -77,4 +83,7 @@ settings = Settings(
     max_upload_mb=max(1, _env_int("MAX_UPLOAD_MB", 5)),
     cors_origins=_cors_origins(),
     cookie_secure=_env_bool("COOKIE_SECURE", False),
+    cookie_samesite=_env_choice(
+        "COOKIE_SAMESITE", "strict", {"strict", "lax", "none"}
+    ),
 )

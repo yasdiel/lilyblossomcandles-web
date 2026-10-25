@@ -228,6 +228,24 @@ def test_rejects_invalid_ids_images_and_prices(client: TestClient):
     assert invalid_price.status_code == 422
 
 
+def test_admin_mutations_reject_foreign_origin(client: TestClient):
+    assert login(client).status_code == 200
+
+    blocked = client.post(
+        "/api/admin/logout",
+        headers={"Origin": "https://evil.example"},
+    )
+    assert blocked.status_code == 403
+    assert client.get("/api/admin/me").status_code == 200
+
+    allowed = client.post(
+        "/api/admin/logout",
+        headers={"Origin": "http://localhost:5173"},
+    )
+    assert allowed.status_code == 200
+    assert client.get("/api/admin/me").status_code == 401
+
+
 def test_change_password_and_logout(client: TestClient):
     assert login(client).status_code == 200
 

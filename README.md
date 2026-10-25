@@ -81,6 +81,27 @@ Puedes cambiar ese destino con `VITE_API_PROXY` en un archivo `.env.local`.
 Si el frontend se despliega en otro dominio, configura `VITE_API_URL` con la URL
 completa de la API (por ejemplo `https://api.tudominio.com/api`).
 
+### Sesión con frontend y API en dominios distintos
+
+La cookie del panel usa `SameSite=Strict` por defecto. Si el frontend y la API
+están en dominios distintos, el navegador no enviará la cookie y el panel volverá
+al login inmediatamente después de entrar.
+
+- Con dos subdominios de un dominio propio (`app.tudominio.com` y
+  `api.tudominio.com`) se consideran el mismo sitio; no hay que cambiar nada.
+- Con dos subdominios de Render (`*.onrender.com`) son sitios distintos. En el
+  backend define:
+
+  ```env
+  COOKIE_SECURE=true
+  COOKIE_SAMESITE=none
+  ```
+
+`SameSite=None` exige HTTPS y `COOKIE_SECURE=true`. Algunos navegadores bloquean
+cookies de terceros; para producción se recomienda usar subdominios de un dominio
+propio. Las peticiones de escritura del panel también validan el encabezado
+`Origin` para evitar CSRF.
+
 ## Migración desde SQLite
 
 La versión anterior guardaba los datos en `backend/data/lilyblossom.db`. Para
@@ -148,6 +169,7 @@ al puerto de la base de datos y guarda la cadena de conexión únicamente en
 | `SESSION_HOURS` | Duración de la sesión del panel, en horas. |
 | `MAX_UPLOAD_MB` | Tamaño máximo por imagen. |
 | `COOKIE_SECURE` | `true` cuando la web se sirve por HTTPS. |
+| `COOKIE_SAMESITE` | `strict` por defecto. Usa `none` con `COOKIE_SECURE=true` si el frontend y la API están en sitios distintos. |
 | `CORS_ORIGINS` | Orígenes permitidos, separados por coma. |
 | `UPLOADS_DIR` | Ruta opcional de las imágenes. |
 | `FRONTEND_DIST` | Ruta opcional del build del frontend. |

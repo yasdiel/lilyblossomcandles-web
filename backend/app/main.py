@@ -3,6 +3,7 @@ from __future__ import annotations
 import logging
 from contextlib import asynccontextmanager
 from pathlib import Path
+from urllib.parse import urlsplit
 
 from fastapi import FastAPI, HTTPException, Request
 from fastapi.middleware.cors import CORSMiddleware
@@ -31,6 +32,17 @@ async def lifespan(_app: FastAPI):
     logger.info("MongoDB conectado. Base de datos: '%s'.", settings.mongo_db)
     logger.info("Imágenes: %s", settings.uploads_dir)
     logger.info("Panel de administración: /admin")
+    logger.info("CORS permitidos: %s", ", ".join(settings.cors_origins) or "(ninguno)")
+    logger.info(
+        "Cookie de sesión: SameSite=%s | Secure=%s",
+        settings.cookie_samesite,
+        settings.cookie_secure,
+    )
+    if settings.cookie_samesite == "none" and not settings.cookie_secure:
+        logger.warning(
+            "COOKIE_SAMESITE=none requiere COOKIE_SECURE=true; "
+            "el navegador rechazará la cookie de sesión."
+        )
     try:
         yield
     finally:
@@ -56,8 +68,40 @@ app.add_middleware(
 )
 
 
+_SAFE_METHODS = {"GET", "HEAD", "OPTIONS"}
+
+
+def _origin_allowed(request: Request, origin: str) -> bool:
+    normalized = origin.strip().rstrip("/").lower()
+    allowed_origins = {
+        item.strip().rstrip("/").lower() for item in settings.cors_origins
+    }
+    if normalized in allowed_origins:
+        return True
+
+    host = request.headers.get("host", "").strip().lower()
+    return bool(host) and urlsplit(normalized).netloc == host
+
+
 @app.middleware("http")
-async def security_headers(request: Request, call_next):
+async def security_middleware(request: Request, call_next):
+    if (
+        request.method not in _SAFE_METHODS
+        and request.url.path.startswith("/api/admin/")
+    ):
+        origin = request.headers.get("origin")
+        if origin and not _origin_allowed(request, origin):
+            logger.warning(
+                "Origen no permitido en %s %s: %s",
+                request.method,
+                request.url.path,
+                origin,
+            )
+            return JSONResponse(
+                status_code=403,
+                content={"detail": "Origen no permitido."},
+            )
+
     response = await call_next(request)
 
     response.headers["X-Content-Type-Options"] = "nosniff"
