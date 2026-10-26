@@ -8,6 +8,7 @@ import CartDrawer from "./components/CartDrawer";
 import Hero from "./sections/Hero";
 import About from "./sections/About";
 import Catalog from "./sections/Catalog";
+import CustomScents from "./sections/CustomScents";
 import ConsciousChoice from "./sections/ConsciousChoice";
 
 export default function Storefront() {
@@ -65,6 +66,7 @@ export default function Storefront() {
           onRetry={retryCatalog}
           onAdd={addToCart}
         />
+        <CustomScents />
         <ConsciousChoice />
       </main>
       <Contact />
