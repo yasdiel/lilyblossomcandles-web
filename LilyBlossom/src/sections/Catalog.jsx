@@ -2,7 +2,7 @@ import Candle from "../components/Candle";
 import { assetUrl } from "../lib/api";
 import { formatPrice } from "../lib/money";
 
-export function Catalog({ products, onAdd }) {
+export function Catalog({ products, status, onRetry, onAdd }) {
   return (
     <section id="coleccion" className="border-t border-[var(--ash)] bg-[var(--paper)]">
       <div className="mx-auto w-full px-6 py-14">
@@ -13,7 +13,27 @@ export function Catalog({ products, onAdd }) {
           </p>
         </div>
 
-        {products.length === 0 ? (
+        {status === "loading" ? (
+          <div
+            className="font-body flex items-center justify-center gap-3 border border-[var(--ash)] bg-[var(--bone)] px-6 py-10 font-light text-[var(--muted)]"
+            role="status"
+            aria-live="polite"
+          >
+            <span className="h-5 w-5 animate-spin rounded-full border border-[var(--ash)] border-t-[var(--amber)]" />
+            Loading the collection…
+          </div>
+        ) : status === "error" ? (
+          <div className="font-body border border-[var(--ash)] bg-[var(--bone)] px-6 py-10 text-center font-light text-[var(--muted)]">
+            <p>We couldn’t load the collection right now.</p>
+            <button
+              type="button"
+              onClick={onRetry}
+              className="mt-5 border border-[var(--ash)] px-5 py-2.5 text-sm text-[var(--cacao)] transition-colors duration-300 hover:border-[var(--cacao)] hover:bg-[var(--cacao)] hover:text-[var(--paper)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--amber)]"
+            >
+              Try again
+            </button>
+          </div>
+        ) : products.length === 0 ? (
           <p className="font-body border border-[var(--ash)] bg-[var(--bone)] px-6 py-10 text-center font-light text-[var(--muted)]">
             New candles are on their way. Come back soon.
           </p>

@@ -1,6 +1,5 @@
 import { useEffect, useState } from "react";
 import { THEME } from "./theme";
-import { PRODUCTS as FALLBACK_PRODUCTS } from "./data/products";
 import { api } from "./lib/api";
 import { useCart } from "./hooks/useCart";
 import Header from "./components/Header";
@@ -23,27 +22,35 @@ export default function Storefront() {
     count,
     total,
   } = useCart();
-  const [products, setProducts] = useState(FALLBACK_PRODUCTS);
+  const [products, setProducts] = useState([]);
+  const [catalogStatus, setCatalogStatus] = useState("loading");
+  const [catalogAttempt, setCatalogAttempt] = useState(0);
 
   useEffect(() => {
     let active = true;
+    setCatalogStatus("loading");
 
     api.products
       .list()
       .then((list) => {
-        if (active && Array.isArray(list)) setProducts(list);
+        if (!active) return;
+        setProducts(Array.isArray(list) ? list : []);
+        setCatalogStatus("ready");
       })
       .catch((error) => {
-        console.warn(
-          "No se pudo cargar el catálogo desde la API; se muestra la selección local.",
-          error,
-        );
+        if (!active) return;
+        console.error("No se pudo cargar el catálogo desde la API.", error);
+        setCatalogStatus("error");
       });
 
     return () => {
       active = false;
     };
-  }, []);
+  }, [catalogAttempt]);
+
+  const retryCatalog = () => {
+    setCatalogAttempt((attempt) => attempt + 1);
+  };
 
   return (
     <div className="font-body min-h-screen bg-[var(--bone)] text-[var(--cacao)]">
@@ -52,7 +59,12 @@ export default function Storefront() {
       <main>
         <Hero />
         <About />
-        <Catalog products={products} onAdd={addToCart} />
+        <Catalog
+          products={products}
+          status={catalogStatus}
+          onRetry={retryCatalog}
+          onAdd={addToCart}
+        />
         <ConsciousChoice />
       </main>
       <Contact />
