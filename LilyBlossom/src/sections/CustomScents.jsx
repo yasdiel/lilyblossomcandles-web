@@ -1,3 +1,6 @@
+import { useCallback, useState } from "react";
+import CustomOrderDialog from "../components/CustomOrderDialog";
+
 const SCENTS = [
   { name: "Sakura", notes: "Floral" },
   { name: "Vanilla Pumpkin", notes: "Sweet" },
@@ -11,6 +14,9 @@ const SCENTS = [
 ];
 
 export function CustomScents() {
+  const [dialogOpen, setDialogOpen] = useState(false);
+  const closeDialog = useCallback(() => setDialogOpen(false), []);
+
   return (
     <section
       id="custom-orders"
@@ -37,12 +43,13 @@ export function CustomScents() {
               create. We’ll craft it in the size, vessel, and finish that feels
               right for your celebration.
             </p>
-            <a
-              href="mailto:lilyblossomcandles@gmail.com?subject=Custom%20order%20inquiry"
+            <button
+              type="button"
+              onClick={() => setDialogOpen(true)}
               className="font-body mt-8 inline-block border border-[var(--cacao)] bg-[var(--cacao)] px-7 py-3 text-sm tracking-wide text-[var(--paper)] transition-all duration-300 hover:bg-transparent hover:text-[var(--cacao)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-[var(--amber)]"
             >
               Request a custom order
-            </a>
+            </button>
             <p className="font-body mt-5 text-[10px] uppercase tracking-[0.22em] text-[var(--muted)]">
               Made to order
               <span aria-hidden="true" className="mx-2 text-[var(--ash)]">
@@ -81,6 +88,8 @@ export function CustomScents() {
           </div>
         </div>
       </div>
+
+      <CustomOrderDialog open={dialogOpen} onClose={closeDialog} />
     </section>
   );
 }
