@@ -3,9 +3,9 @@
 Tienda de velas artesanales con catálogo público, sección de productos para eventos y panel privado para la dueña del negocio.
 
 - **Frontend:** React 19 + Vite + Tailwind CSS.
-- **Backend:** FastAPI + MongoDB.
+- **Backend:** FastAPI + MongoDB + Pillow (optimización de imágenes).
 - **Panel:** disponible en `/admin`.
-- **Imágenes:** se guardan en `backend/uploads/` y se sirven desde `/uploads/...`.
+- **Imágenes:** se optimizan a WebP y se guardan en MongoDB; se sirven desde `/api/images/...`.
 
 Requisitos: Python 3.11 o superior, Node.js 20.19 o superior y MongoDB 6.0 o superior en ejecución.
 
@@ -32,7 +32,7 @@ web de velas/
     │   └── images.py     # Validación y guardado de fotos
     ├── data/             # SQLite histórico (solo para migrar; ya no se usa)
     ├── scripts/          # Migración de SQLite a MongoDB
-    ├── uploads/          # Fotos subidas desde el panel
+    ├── uploads/          # Fotos antiguas; se migran a MongoDB al arrancar
     ├── tests/
     ├── .env              # Credenciales y configuración local
     └── requirements.txt
@@ -75,7 +75,8 @@ npm run dev
 
 Abre <http://localhost:5173>. El panel está en <http://localhost:5173/admin>.
 
-Vite redirige `/api` y `/uploads` al backend en `http://127.0.0.1:8000`.
+Vite redirige `/api` y `/uploads` al backend en `http://127.0.0.1:8000`
+(`/uploads` solo se usa para fotos antiguas; las nuevas viven en MongoDB).
 Puedes cambiar ese destino con `VITE_API_PROXY` en un archivo `.env.local`.
 Si el frontend se despliega en otro dominio, configura `VITE_API_URL` con la URL
 completa de la API (por ejemplo `https://api.tudominio.com/api`).
@@ -130,7 +131,15 @@ no se copian: hay que volver a iniciar sesión.
    estado de publicación y una foto JPG, PNG o WebP de hasta 5 MB.
 4. Los productos marcados como **Visible en la tienda** aparecen en el catálogo
    público inmediatamente. Los no visibles quedan como borradores.
-5. Cambia la contraseña inicial desde la sección **Seguridad** al final del panel.
+5. En **Productos para eventos** puedes crear piezas con foto obligatoria, nombre,
+   descripción y visibilidad. Aparecen debajo de la colección en la tienda.
+6. Las fotos se validan, se orientan, se reducen a un máximo de 1800 px y se
+   convierten a WebP antes de guardarse en la colección `images` de MongoDB.
+7. Cambia la contraseña inicial desde la sección **Seguridad** al final del panel.
+
+> Al arrancar, el backend migra automáticamente a MongoDB las fotos antiguas que
+> encuentre en `UPLOADS_DIR`. Una vez migradas, las fotos nuevas ya no dependen
+> del disco del servidor.
 
 > Las credenciales de `.env` solo se usan al crear la cuenta de administración
 > por primera vez. Si la cuenta ya existe, cambia la contraseña desde el panel.
@@ -170,7 +179,7 @@ al puerto de la base de datos y guarda la cadena de conexión únicamente en
 | `COOKIE_SECURE` | `true` cuando la web se sirve por HTTPS. |
 | `COOKIE_SAMESITE` | `strict` por defecto. `none` con `COOKIE_SECURE=true` permite la cookie entre sitios; el panel también funciona con token si no se configura. |
 | `CORS_ORIGINS` | Orígenes permitidos, separados por coma. |
-| `UPLOADS_DIR` | Ruta opcional de las imágenes. |
+| `UPLOADS_DIR` | Ruta opcional de fotos antiguas que se migran a MongoDB al arrancar. Las fotos nuevas se guardan en la base de datos. |
 | `FRONTEND_DIST` | Ruta opcional del build del frontend. |
 
 ## API
@@ -180,6 +189,7 @@ Pública:
 - `GET /api/products` — productos publicados.
 - `GET /api/products/{id}` — detalle de un producto publicado. El `id` es un ObjectId de MongoDB en formato de texto.
 - `GET /api/events` — productos para eventos publicados.
+- `GET /api/images/{id}` — foto optimizada guardada en MongoDB.
 - `GET /api/health` — estado del servidor y de MongoDB.
 
 Administración (requiere cookie de sesión o encabezado
@@ -217,6 +227,8 @@ pytest -q
   en MongoDB solo se guarda el hash del token. El panel también admite el token
   por `Authorization: Bearer` para navegadores que bloquean cookies de terceros.
 - Hay un límite de intentos fallidos de inicio de sesión por IP.
-- Las fotos se validan por contenido real y se renombran con UUID.
+- Las fotos se validan por contenido real, se corrigen según su orientación EXIF,
+  se reducen a un máximo de 1800 px, se convierten a WebP y se guardan en MongoDB.
+  No se conserva el archivo original.
 - Las sesiones expiran automáticamente mediante un índice TTL de MongoDB.
 - En producción, usa HTTPS y cambia la contraseña inicial.

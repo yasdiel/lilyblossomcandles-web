@@ -4,6 +4,7 @@ import math
 import re
 from typing import Annotated, Any
 
+from bson import ObjectId
 from fastapi import (
     APIRouter,
     Depends,
@@ -18,7 +19,12 @@ from fastapi import (
 from pymongo import ReturnDocument
 
 from ..database import get_db, to_object_id, utc_now
-from ..images import ImageValidationError, delete_image, store_image
+from ..images import (
+    ImageValidationError,
+    delete_image,
+    delete_legacy_image,
+    store_image,
+)
 from ..schemas import (
     AdminUserOut,
     ChangePasswordIn,
@@ -210,10 +216,10 @@ async def create_product(
         nombre, notas, peso, precio, vaso, cera
     )
 
-    image_filename: str | None = None
+    image_id: ObjectId | None = None
     if imagen is not None and imagen.filename:
         try:
-            image_filename = await store_image(imagen)
+            image_id = await store_image(imagen)
         except ImageValidationError as exc:
             raise HTTPException(422, str(exc)) from exc
 
@@ -225,7 +231,7 @@ async def create_product(
         "precio": price,
         "vaso": vaso,
         "cera": cera,
-        "imagen": image_filename,
+        "imagen_id": image_id,
         "activo": activo,
         "created_at": now,
         "updated_at": now,
@@ -234,7 +240,7 @@ async def create_product(
     try:
         result = get_db().products.insert_one(document)
     except Exception:
-        delete_image(image_filename)
+        delete_image(image_id)
         raise
 
     document["_id"] = result.inserted_id
@@ -267,18 +273,22 @@ async def update_product(
     if existing is None:
         raise HTTPException(404, "Producto no encontrado.")
 
-    old_image = existing.get("imagen")
-    new_image = old_image
-    created_image: str | None = None
+    old_image_id = existing.get("imagen_id")
+    old_legacy_image = existing.get("imagen")
+    new_image_id = old_image_id
+    new_legacy_image = old_legacy_image
+    created_image: ObjectId | None = None
 
     if imagen is not None and imagen.filename:
         try:
             created_image = await store_image(imagen)
         except ImageValidationError as exc:
             raise HTTPException(422, str(exc)) from exc
-        new_image = created_image
+        new_image_id = created_image
+        new_legacy_image = None
     elif remove_image:
-        new_image = None
+        new_image_id = None
+        new_legacy_image = None
 
     try:
         row = db.products.find_one_and_update(
@@ -291,7 +301,8 @@ async def update_product(
                     "precio": price,
                     "vaso": vaso,
                     "cera": cera,
-                    "imagen": new_image,
+                    "imagen_id": new_image_id,
+                    "imagen": new_legacy_image,
                     "activo": activo,
                     "updated_at": utc_now(),
                 }
@@ -306,8 +317,12 @@ async def update_product(
         delete_image(created_image)
         raise HTTPException(404, "Producto no encontrado.")
 
-    if old_image and old_image != new_image:
-        delete_image(old_image)
+    if old_image_id and (
+        new_image_id is None or str(old_image_id) != str(new_image_id)
+    ):
+        delete_image(old_image_id)
+    if old_legacy_image and old_legacy_image != new_legacy_image:
+        delete_legacy_image(old_legacy_image)
 
     return product_to_dict(row)
 
@@ -326,7 +341,8 @@ def delete_product(
     if product is None:
         raise HTTPException(404, "Producto no encontrado.")
 
-    delete_image(product.get("imagen"))
+    delete_image(product.get("imagen_id"))
+    delete_legacy_image(product.get("imagen"))
     return MessageOut(message="Producto eliminado.")
 
 
@@ -354,7 +370,7 @@ async def create_event(
         raise HTTPException(422, "La foto del producto para eventos es obligatoria.")
 
     try:
-        image_filename = await store_image(imagen)
+        image_id = await store_image(imagen)
     except ImageValidationError as exc:
         raise HTTPException(422, str(exc)) from exc
 
@@ -362,7 +378,7 @@ async def create_event(
     document = {
         "nombre": nombre,
         "descripcion": descripcion,
-        "imagen": image_filename,
+        "imagen_id": image_id,
         "activo": activo,
         "created_at": now,
         "updated_at": now,
@@ -371,7 +387,7 @@ async def create_event(
     try:
         result = get_db().events.insert_one(document)
     except Exception:
-        delete_image(image_filename)
+        delete_image(image_id)
         raise
 
     document["_id"] = result.inserted_id
@@ -397,18 +413,21 @@ async def update_event(
     if existing is None:
         raise HTTPException(404, "Producto para eventos no encontrado.")
 
-    old_image = existing.get("imagen")
-    new_image = old_image
-    created_image: str | None = None
+    old_image_id = existing.get("imagen_id")
+    old_legacy_image = existing.get("imagen")
+    new_image_id = old_image_id
+    new_legacy_image = old_legacy_image
+    created_image: ObjectId | None = None
 
     if imagen is not None and imagen.filename:
         try:
             created_image = await store_image(imagen)
         except ImageValidationError as exc:
             raise HTTPException(422, str(exc)) from exc
-        new_image = created_image
+        new_image_id = created_image
+        new_legacy_image = None
 
-    if not new_image:
+    if not new_image_id and not new_legacy_image:
         raise HTTPException(422, "La foto del producto para eventos es obligatoria.")
 
     try:
@@ -418,7 +437,8 @@ async def update_event(
                 "$set": {
                     "nombre": nombre,
                     "descripcion": descripcion,
-                    "imagen": new_image,
+                    "imagen_id": new_image_id,
+                    "imagen": new_legacy_image,
                     "activo": activo,
                     "updated_at": utc_now(),
                 }
@@ -433,8 +453,12 @@ async def update_event(
         delete_image(created_image)
         raise HTTPException(404, "Producto para eventos no encontrado.")
 
-    if old_image and old_image != new_image:
-        delete_image(old_image)
+    if old_image_id and (
+        new_image_id is None or str(old_image_id) != str(new_image_id)
+    ):
+        delete_image(old_image_id)
+    if old_legacy_image and old_legacy_image != new_legacy_image:
+        delete_legacy_image(old_legacy_image)
 
     return event_to_dict(row)
 
@@ -453,5 +477,6 @@ def delete_event(
     if event is None:
         raise HTTPException(404, "Producto para eventos no encontrado.")
 
-    delete_image(event.get("imagen"))
+    delete_image(event.get("imagen_id"))
+    delete_legacy_image(event.get("imagen"))
     return MessageOut(message="Producto para eventos eliminado.")

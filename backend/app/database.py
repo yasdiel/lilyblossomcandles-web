@@ -197,6 +197,7 @@ def get_collection_stats() -> dict[str, Any]:
     return {
         "products": db.products.count_documents({}),
         "events": db.events.count_documents({}),
+        "images": db.images.count_documents({}),
         "users": db.users.count_documents({}),
         "sessions": db.sessions.count_documents({}),
     }

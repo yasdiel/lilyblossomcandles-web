@@ -13,7 +13,9 @@ from pymongo.errors import PyMongoError
 
 from .config import settings
 from .database import close_db, get_db, init_db
+from .images import migrate_legacy_uploads
 from .routers import admin, events, products
+from .routers import images as image_routes
 
 logging.basicConfig(
     level=logging.INFO,
@@ -26,11 +28,19 @@ logger = logging.getLogger("lilyblossom")
 async def lifespan(_app: FastAPI):
     try:
         init_db()
+        try:
+            migrate_legacy_uploads()
+        except Exception:
+            logger.exception(
+                "No se pudieron migrar las fotos antiguas a MongoDB. "
+                "La tienda seguirá funcionando con las imágenes disponibles."
+            )
     except Exception:
         close_db()
         raise
     logger.info("MongoDB conectado. Base de datos: '%s'.", settings.mongo_db)
-    logger.info("Imágenes: %s", settings.uploads_dir)
+    logger.info("Imágenes: MongoDB, optimizadas a WebP.")
+    logger.info("Fotos antiguas en disco: %s", settings.uploads_dir)
     logger.info("Panel de administración: /admin")
     logger.info("CORS permitidos: %s", ", ".join(settings.cors_origins) or "(ninguno)")
     logger.info(
@@ -132,6 +142,7 @@ async def mongo_unavailable_handler(
 
 app.include_router(products.router)
 app.include_router(events.router)
+app.include_router(image_routes.router)
 app.include_router(admin.router)
 app.mount(
     "/uploads",
