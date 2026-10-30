@@ -1,7 +1,7 @@
 import Logo from "./Logo";
 
 export function Header({ count, onCartClick }) {
-  const links = [["Home", "#inicio"], ["Collection", "#coleccion"], ["Custom orders", "#custom-orders"], ["About", "#nosotros"], ["Ingredients", "#ingredients"], ["Contact", "#contacto"]];
+  const links = [["Home", "#inicio"], ["Collection", "#coleccion"], ["Events", "#eventos"], ["Custom orders", "#custom-orders"], ["About", "#nosotros"], ["Ingredients", "#ingredients"], ["Contact", "#contacto"]];
   return (
     <header className="sticky top-0 z-20 border-b border-[var(--ash)] bg-[var(--bone)]/90 backdrop-blur">
       <div className="mx-auto flex w-full items-center justify-between px-6 py-3">

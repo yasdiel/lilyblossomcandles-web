@@ -1,6 +1,6 @@
 # Lily Blossom Candles
 
-Tienda de velas artesanales con catálogo público y panel privado para la dueña del negocio.
+Tienda de velas artesanales con catálogo público, sección de productos para eventos y panel privado para la dueña del negocio.
 
 - **Frontend:** React 19 + Vite + Tailwind CSS.
 - **Backend:** FastAPI + MongoDB.
@@ -15,12 +15,11 @@ Requisitos: Python 3.11 o superior, Node.js 20.19 o superior y MongoDB 6.0 o sup
 web de velas/
 ├── LilyBlossom/          # Frontend React + Vite
 │   ├── src/
-│   │   ├── admin/        # Login, panel y formulario de productos
+│   │   ├── admin/        # Login, panel y formularios de productos y eventos
 │   │   ├── components/
-│   │   ├── data/         # Catálogo de respaldo si la API no responde
 │   │   ├── hooks/
 │   │   ├── lib/          # Cliente de la API y utilidades
-│   │   ├── sections/
+│   │   ├── sections/     # Colección, eventos, pedidos personalizados, etc.
 │   │   ├── App.jsx       # Decide entre tienda (/), panel (/admin)
 │   │   └── Storefront.jsx
 │   └── dist/             # Build que sirve FastAPI en producción
@@ -180,6 +179,7 @@ Pública:
 
 - `GET /api/products` — productos publicados.
 - `GET /api/products/{id}` — detalle de un producto publicado. El `id` es un ObjectId de MongoDB en formato de texto.
+- `GET /api/events` — productos para eventos publicados.
 - `GET /api/health` — estado del servidor y de MongoDB.
 
 Administración (requiere cookie de sesión o encabezado
@@ -193,6 +193,10 @@ Administración (requiere cookie de sesión o encabezado
 - `POST /api/admin/products` — `multipart/form-data`, con `imagen` opcional.
 - `PUT /api/admin/products/{id}` — actualiza campos y foto.
 - `DELETE /api/admin/products/{id}`
+- `GET /api/admin/events` — incluye productos para eventos ocultos.
+- `POST /api/admin/events` — `multipart/form-data`; la foto es obligatoria.
+- `PUT /api/admin/events/{id}` — actualiza nombre, descripción, visibilidad y foto.
+- `DELETE /api/admin/events/{id}`
 
 ## Tests del backend
 
@@ -209,8 +213,9 @@ pytest -q
 ## Notas de seguridad
 
 - Las contraseñas se guardan con `scrypt` y sal aleatoria, nunca en texto plano.
-- La sesión usa una cookie `HttpOnly`, `SameSite=Strict` y token aleatorio; en
-  MongoDB solo se guarda el hash del token.
+- La sesión usa una cookie `HttpOnly`, `SameSite` configurable y token aleatorio;
+  en MongoDB solo se guarda el hash del token. El panel también admite el token
+  por `Authorization: Bearer` para navegadores que bloquean cookies de terceros.
 - Hay un límite de intentos fallidos de inicio de sesión por IP.
 - Las fotos se validan por contenido real y se renombran con UUID.
 - Las sesiones expiran automáticamente mediante un índice TTL de MongoDB.

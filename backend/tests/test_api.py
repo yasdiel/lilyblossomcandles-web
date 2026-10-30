@@ -74,9 +74,16 @@ def test_health_and_seeded_catalog(client: TestClient):
     assert all(isinstance(product["id"], str) for product in products)
     assert all(ObjectId.is_valid(product["id"]) for product in products)
 
+    events = client.get("/api/events")
+    assert events.status_code == 200
+    assert events.json() == []
+
 
 def test_admin_endpoints_require_login(client: TestClient):
     response = client.get("/api/admin/products")
+    assert response.status_code == 401
+
+    response = client.get("/api/admin/events")
     assert response.status_code == 401
 
     response = client.get("/api/admin/me")
@@ -178,6 +185,82 @@ def test_full_product_lifecycle_with_image(client: TestClient):
     deleted = client.delete(f"/api/admin/products/{product['id']}")
     assert deleted.status_code == 200
     assert client.get(f"/api/products/{product['id']}").status_code == 404
+
+
+def test_event_product_lifecycle_with_image(client: TestClient):
+    assert login(client).status_code == 200
+
+    missing_photo = client.post(
+        "/api/admin/events",
+        data={
+            "nombre": "Wedding Table",
+            "descripcion": "Neutral candles for a wedding reception.",
+            "activo": "true",
+        },
+    )
+    assert missing_photo.status_code == 422
+
+    created = client.post(
+        "/api/admin/events",
+        data={
+            "nombre": "Wedding Table",
+            "descripcion": "Neutral candles for a wedding reception.",
+            "activo": "true",
+        },
+        files={"imagen": ("event.png", PNG_BYTES, "image/png")},
+    )
+    assert created.status_code == 201, created.text
+    event = created.json()
+    assert event["nombre"] == "Wedding Table"
+    assert event["descripcion"] == "Neutral candles for a wedding reception."
+    assert event["imagen_url"].startswith("/uploads/")
+    assert event["activo"] is True
+    assert ObjectId.is_valid(event["id"])
+    assert client.get(event["imagen_url"]).content == PNG_BYTES
+
+    public = client.get("/api/events")
+    assert any(item["id"] == event["id"] for item in public.json())
+
+    hidden = client.post(
+        "/api/admin/events",
+        data={
+            "nombre": "Private Celebration",
+            "descripcion": "",
+            "activo": "false",
+        },
+        files={"imagen": ("event-private.png", PNG_BYTES, "image/png")},
+    )
+    assert hidden.status_code == 201
+    hidden_event = hidden.json()
+    assert all(
+        item["id"] != hidden_event["id"] for item in client.get("/api/events").json()
+    )
+
+    admin_list = client.get("/api/admin/events")
+    assert {item["id"] for item in admin_list.json()} >= {
+        event["id"],
+        hidden_event["id"],
+    }
+
+    updated = client.put(
+        f"/api/admin/events/{event['id']}",
+        data={
+            "nombre": "Wedding Table Updated",
+            "descripcion": "A softer palette for the reception.",
+            "activo": "true",
+        },
+        files={"imagen": ("event-updated.png", PNG_BYTES, "image/png")},
+    )
+    assert updated.status_code == 200, updated.text
+    updated_event = updated.json()
+    assert updated_event["nombre"] == "Wedding Table Updated"
+    assert updated_event["imagen_url"] != event["imagen_url"]
+    assert client.get(event["imagen_url"]).status_code == 404
+    assert client.get(updated_event["imagen_url"]).status_code == 200
+
+    assert client.delete(f"/api/admin/events/{event['id']}").status_code == 200
+    assert client.delete(f"/api/admin/events/{hidden_event['id']}").status_code == 200
+    assert client.get("/api/events").json() == []
 
 
 def test_hidden_products_are_private(client: TestClient):

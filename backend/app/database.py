@@ -102,6 +102,10 @@ def create_indexes(db: Database) -> None:
         [("activo", ASCENDING), ("_id", ASCENDING)],
         name="public_catalog",
     )
+    db.events.create_index(
+        [("activo", ASCENDING), ("_id", ASCENDING)],
+        name="public_events",
+    )
 
 
 def init_db() -> None:
@@ -192,6 +196,7 @@ def get_collection_stats() -> dict[str, Any]:
     db = get_db()
     return {
         "products": db.products.count_documents({}),
+        "events": db.events.count_documents({}),
         "users": db.users.count_documents({}),
         "sessions": db.sessions.count_documents({}),
     }

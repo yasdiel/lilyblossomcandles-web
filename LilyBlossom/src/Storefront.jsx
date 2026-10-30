@@ -8,6 +8,7 @@ import CartDrawer from "./components/CartDrawer";
 import Hero from "./sections/Hero";
 import About from "./sections/About";
 import Catalog from "./sections/Catalog";
+import Events from "./sections/Events";
 import CustomScents from "./sections/CustomScents";
 import ConsciousChoice from "./sections/ConsciousChoice";
 
@@ -26,6 +27,9 @@ export default function Storefront() {
   const [products, setProducts] = useState([]);
   const [catalogStatus, setCatalogStatus] = useState("loading");
   const [catalogAttempt, setCatalogAttempt] = useState(0);
+  const [events, setEvents] = useState([]);
+  const [eventsStatus, setEventsStatus] = useState("loading");
+  const [eventsAttempt, setEventsAttempt] = useState(0);
 
   useEffect(() => {
     let active = true;
@@ -49,8 +53,34 @@ export default function Storefront() {
     };
   }, [catalogAttempt]);
 
+  useEffect(() => {
+    let active = true;
+    setEventsStatus("loading");
+
+    api.events
+      .list()
+      .then((list) => {
+        if (!active) return;
+        setEvents(Array.isArray(list) ? list : []);
+        setEventsStatus("ready");
+      })
+      .catch((error) => {
+        if (!active) return;
+        console.error("No se pudieron cargar los productos para eventos.", error);
+        setEventsStatus("error");
+      });
+
+    return () => {
+      active = false;
+    };
+  }, [eventsAttempt]);
+
   const retryCatalog = () => {
     setCatalogAttempt((attempt) => attempt + 1);
+  };
+
+  const retryEvents = () => {
+    setEventsAttempt((attempt) => attempt + 1);
   };
 
   return (
@@ -66,6 +96,7 @@ export default function Storefront() {
           onRetry={retryCatalog}
           onAdd={addToCart}
         />
+        <Events events={events} status={eventsStatus} onRetry={retryEvents} />
         <CustomScents />
         <ConsciousChoice />
       </main>

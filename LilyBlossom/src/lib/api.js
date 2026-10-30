@@ -104,6 +104,9 @@ export const api = {
   products: {
     list: () => request("/products"),
   },
+  events: {
+    list: () => request("/events"),
+  },
   admin: {
     me: () => request("/admin/me"),
     login: async (email, password) => {
@@ -128,6 +131,13 @@ export const api = {
       request(`/admin/products/${id}`, { method: "PUT", body: formData }),
     deleteProduct: (id) =>
       request(`/admin/products/${id}`, { method: "DELETE" }),
+    events: () => request("/admin/events"),
+    createEvent: (formData) =>
+      request("/admin/events", { method: "POST", body: formData }),
+    updateEvent: (id, formData) =>
+      request(`/admin/events/${id}`, { method: "PUT", body: formData }),
+    deleteEvent: (id) =>
+      request(`/admin/events/${id}`, { method: "DELETE" }),
     changePassword: async (currentPassword, newPassword) => {
       const result = await request("/admin/change-password", {
         method: "POST",

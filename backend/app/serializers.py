@@ -30,3 +30,16 @@ def product_to_dict(document: Mapping[str, Any]) -> dict[str, Any]:
         "created_at": _iso(document.get("created_at")) or "",
         "updated_at": _iso(document.get("updated_at")) or "",
     }
+
+
+def event_to_dict(document: Mapping[str, Any]) -> dict[str, Any]:
+    image = document.get("imagen")
+    return {
+        "id": str(document["_id"]),
+        "nombre": document.get("nombre", ""),
+        "descripcion": document.get("descripcion", ""),
+        "imagen_url": f"/uploads/{quote(image)}" if image else None,
+        "activo": bool(document.get("activo", False)),
+        "created_at": _iso(document.get("created_at")) or "",
+        "updated_at": _iso(document.get("updated_at")) or "",
+    }

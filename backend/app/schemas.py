@@ -44,3 +44,13 @@ class ProductOut(BaseModel):
     activo: bool
     created_at: str
     updated_at: str
+
+
+class EventProductOut(BaseModel):
+    id: str
+    nombre: str
+    descripcion: str
+    imagen_url: str | None = None
+    activo: bool
+    created_at: str
+    updated_at: str

@@ -23,6 +23,7 @@ from ..schemas import (
     AdminUserOut,
     ChangePasswordIn,
     ChangePasswordOut,
+    EventProductOut,
     LoginIn,
     LoginOut,
     MessageOut,
@@ -42,7 +43,7 @@ from ..security import (
     set_session_cookie,
     verify_password,
 )
-from ..serializers import product_to_dict
+from ..serializers import event_to_dict, product_to_dict
 
 router = APIRouter(prefix="/api/admin", tags=["administración"])
 
@@ -81,6 +82,22 @@ def _validate_product_fields(
         raise HTTPException(422, "Los colores deben estar en formato hexadecimal (#RRGGBB).")
 
     return nombre, notas, peso, round(precio, 2), vaso, cera
+
+
+def _validate_event_fields(nombre: str, descripcion: str) -> tuple[str, str]:
+    nombre = nombre.strip()
+    descripcion = descripcion.strip()
+
+    if not nombre:
+        raise HTTPException(422, "El nombre del producto para eventos es obligatorio.")
+    if len(nombre) > 120:
+        raise HTTPException(422, "El nombre no puede superar los 120 caracteres.")
+    if len(descripcion) > 600:
+        raise HTTPException(
+            422, "La descripción no puede superar los 600 caracteres."
+        )
+
+    return nombre, descripcion
 
 
 @router.post("/login", response_model=LoginOut)
@@ -311,3 +328,130 @@ def delete_product(
 
     delete_image(product.get("imagen"))
     return MessageOut(message="Producto eliminado.")
+
+
+@router.get("/events", response_model=list[EventProductOut])
+def admin_list_events(
+    _admin: Annotated[dict[str, Any], Depends(require_admin)],
+) -> list[dict[str, Any]]:
+    documents = get_db().events.find({}).sort("_id", 1)
+    return [event_to_dict(document) for document in documents]
+
+
+@router.post(
+    "/events", response_model=EventProductOut, status_code=status.HTTP_201_CREATED
+)
+async def create_event(
+    _admin: Annotated[dict[str, Any], Depends(require_admin)],
+    nombre: Annotated[str, Form()] = "",
+    descripcion: Annotated[str, Form()] = "",
+    activo: Annotated[bool, Form()] = True,
+    imagen: Annotated[UploadFile | None, File()] = None,
+) -> dict[str, Any]:
+    nombre, descripcion = _validate_event_fields(nombre, descripcion)
+
+    if imagen is None or not imagen.filename:
+        raise HTTPException(422, "La foto del producto para eventos es obligatoria.")
+
+    try:
+        image_filename = await store_image(imagen)
+    except ImageValidationError as exc:
+        raise HTTPException(422, str(exc)) from exc
+
+    now = utc_now()
+    document = {
+        "nombre": nombre,
+        "descripcion": descripcion,
+        "imagen": image_filename,
+        "activo": activo,
+        "created_at": now,
+        "updated_at": now,
+    }
+
+    try:
+        result = get_db().events.insert_one(document)
+    except Exception:
+        delete_image(image_filename)
+        raise
+
+    document["_id"] = result.inserted_id
+    return event_to_dict(document)
+
+
+@router.put("/events/{event_id}", response_model=EventProductOut)
+async def update_event(
+    event_id: str,
+    _admin: Annotated[dict[str, Any], Depends(require_admin)],
+    nombre: Annotated[str, Form()] = "",
+    descripcion: Annotated[str, Form()] = "",
+    activo: Annotated[bool, Form()] = True,
+    imagen: Annotated[UploadFile | None, File()] = None,
+) -> dict[str, Any]:
+    nombre, descripcion = _validate_event_fields(nombre, descripcion)
+
+    object_id = to_object_id(event_id)
+    db = get_db()
+    existing = (
+        db.events.find_one({"_id": object_id}) if object_id is not None else None
+    )
+    if existing is None:
+        raise HTTPException(404, "Producto para eventos no encontrado.")
+
+    old_image = existing.get("imagen")
+    new_image = old_image
+    created_image: str | None = None
+
+    if imagen is not None and imagen.filename:
+        try:
+            created_image = await store_image(imagen)
+        except ImageValidationError as exc:
+            raise HTTPException(422, str(exc)) from exc
+        new_image = created_image
+
+    if not new_image:
+        raise HTTPException(422, "La foto del producto para eventos es obligatoria.")
+
+    try:
+        row = db.events.find_one_and_update(
+            {"_id": object_id},
+            {
+                "$set": {
+                    "nombre": nombre,
+                    "descripcion": descripcion,
+                    "imagen": new_image,
+                    "activo": activo,
+                    "updated_at": utc_now(),
+                }
+            },
+            return_document=ReturnDocument.AFTER,
+        )
+    except Exception:
+        delete_image(created_image)
+        raise
+
+    if row is None:
+        delete_image(created_image)
+        raise HTTPException(404, "Producto para eventos no encontrado.")
+
+    if old_image and old_image != new_image:
+        delete_image(old_image)
+
+    return event_to_dict(row)
+
+
+@router.delete("/events/{event_id}", response_model=MessageOut)
+def delete_event(
+    event_id: str,
+    _admin: Annotated[dict[str, Any], Depends(require_admin)],
+) -> MessageOut:
+    object_id = to_object_id(event_id)
+    event = (
+        get_db().events.find_one_and_delete({"_id": object_id})
+        if object_id is not None
+        else None
+    )
+    if event is None:
+        raise HTTPException(404, "Producto para eventos no encontrado.")
+
+    delete_image(event.get("imagen"))
+    return MessageOut(message="Producto para eventos eliminado.")

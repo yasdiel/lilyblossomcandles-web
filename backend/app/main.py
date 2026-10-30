@@ -13,7 +13,7 @@ from pymongo.errors import PyMongoError
 
 from .config import settings
 from .database import close_db, get_db, init_db
-from .routers import admin, products
+from .routers import admin, events, products
 
 logging.basicConfig(
     level=logging.INFO,
@@ -52,8 +52,8 @@ async def lifespan(_app: FastAPI):
 app = FastAPI(
     title="Lily Blossom Candles API",
     description=(
-        "API de la tienda de velas. Incluye catálogo público y un panel "
-        "de administración para gestionar productos e imágenes."
+        "API de la tienda de velas. Incluye catálogo público, productos "
+        "para eventos y un panel de administración para gestionar imágenes."
     ),
     version="1.0.0",
     lifespan=lifespan,
@@ -131,6 +131,7 @@ async def mongo_unavailable_handler(
 
 
 app.include_router(products.router)
+app.include_router(events.router)
 app.include_router(admin.router)
 app.mount(
     "/uploads",
