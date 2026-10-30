@@ -15,6 +15,7 @@ class AdminUserOut(BaseModel):
 
 class LoginOut(BaseModel):
     user: AdminUserOut
+    access_token: str
     message: str
 
 
@@ -25,6 +26,10 @@ class ChangePasswordIn(BaseModel):
 
 class MessageOut(BaseModel):
     message: str
+
+
+class ChangePasswordOut(MessageOut):
+    access_token: str
 
 
 class ProductOut(BaseModel):

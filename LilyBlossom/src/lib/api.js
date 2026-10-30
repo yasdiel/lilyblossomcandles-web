@@ -1,5 +1,29 @@
 const API_BASE = (import.meta.env.VITE_API_URL || "/api").replace(/\/+$/, "");
 const API_ORIGIN = /^https?:\/\//i.test(API_BASE) ? new URL(API_BASE).origin : "";
+const AUTH_TOKEN_KEY = "lily_admin_access_token";
+
+function readAuthToken() {
+  try {
+    return window.sessionStorage.getItem(AUTH_TOKEN_KEY) || "";
+  } catch {
+    return "";
+  }
+}
+
+let authToken = readAuthToken();
+
+function setAuthToken(token) {
+  authToken = typeof token === "string" ? token : "";
+  try {
+    if (authToken) {
+      window.sessionStorage.setItem(AUTH_TOKEN_KEY, authToken);
+    } else {
+      window.sessionStorage.removeItem(AUTH_TOKEN_KEY);
+    }
+  } catch {
+    // Algunos navegadores bloquean sessionStorage; la cookie sigue disponible.
+  }
+}
 
 export class ApiError extends Error {
   constructor(message, status = 0, data = null) {
@@ -27,6 +51,10 @@ function extractMessage(data, fallback) {
 async function request(path, { method = "GET", body } = {}) {
   const headers = {};
   let payload;
+
+  if (authToken && path.startsWith("/admin/")) {
+    headers.Authorization = `Bearer ${authToken}`;
+  }
 
   if (body instanceof FormData) {
     payload = body;
@@ -61,6 +89,7 @@ async function request(path, { method = "GET", body } = {}) {
   }
 
   if (!response.ok) {
+    if (response.status === 401) setAuthToken("");
     throw new ApiError(
       extractMessage(data, "Ocurrió un error inesperado."),
       response.status,
@@ -77,9 +106,21 @@ export const api = {
   },
   admin: {
     me: () => request("/admin/me"),
-    login: (email, password) =>
-      request("/admin/login", { method: "POST", body: { email, password } }),
-    logout: () => request("/admin/logout", { method: "POST" }),
+    login: async (email, password) => {
+      const result = await request("/admin/login", {
+        method: "POST",
+        body: { email, password },
+      });
+      setAuthToken(result?.access_token || "");
+      return result;
+    },
+    logout: async () => {
+      try {
+        return await request("/admin/logout", { method: "POST" });
+      } finally {
+        setAuthToken("");
+      }
+    },
     products: () => request("/admin/products"),
     createProduct: (formData) =>
       request("/admin/products", { method: "POST", body: formData }),
@@ -87,14 +128,17 @@ export const api = {
       request(`/admin/products/${id}`, { method: "PUT", body: formData }),
     deleteProduct: (id) =>
       request(`/admin/products/${id}`, { method: "DELETE" }),
-    changePassword: (currentPassword, newPassword) =>
-      request("/admin/change-password", {
+    changePassword: async (currentPassword, newPassword) => {
+      const result = await request("/admin/change-password", {
         method: "POST",
         body: {
           current_password: currentPassword,
           new_password: newPassword,
         },
-      }),
+      });
+      setAuthToken(result?.access_token || "");
+      return result;
+    },
   },
 };
 

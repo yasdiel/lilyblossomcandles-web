@@ -17,12 +17,12 @@ from fastapi import (
 )
 from pymongo import ReturnDocument
 
-from ..config import settings
 from ..database import get_db, to_object_id, utc_now
 from ..images import ImageValidationError, delete_image, store_image
 from ..schemas import (
     AdminUserOut,
     ChangePasswordIn,
+    ChangePasswordOut,
     LoginIn,
     LoginOut,
     MessageOut,
@@ -33,7 +33,7 @@ from ..security import (
     clear_failed_logins,
     clear_session_cookie,
     create_session,
-    delete_session,
+    delete_request_sessions,
     delete_user_sessions,
     hash_password,
     login_retry_after,
@@ -113,13 +113,14 @@ def login(payload: LoginIn, request: Request, response: Response) -> LoginOut:
     set_session_cookie(response, token)
     return LoginOut(
         user=AdminUserOut(id=str(user["_id"]), email=user["email"]),
+        access_token=token,
         message="Sesión iniciada correctamente.",
     )
 
 
 @router.post("/logout", response_model=MessageOut)
 def logout(request: Request, response: Response) -> MessageOut:
-    delete_session(request.cookies.get(settings.cookie_name))
+    delete_request_sessions(request)
     clear_session_cookie(response)
     return MessageOut(message="Sesión cerrada.")
 
@@ -131,12 +132,12 @@ def me(
     return AdminUserOut(id=str(admin["id"]), email=admin["email"])
 
 
-@router.post("/change-password", response_model=MessageOut)
+@router.post("/change-password", response_model=ChangePasswordOut)
 def change_password(
     payload: ChangePasswordIn,
     response: Response,
     admin: Annotated[dict[str, Any], Depends(require_admin)],
-) -> MessageOut:
+) -> ChangePasswordOut:
     db = get_db()
     user = db.users.find_one({"_id": admin["id"]}, {"password_hash": 1})
 
@@ -162,7 +163,10 @@ def change_password(
     delete_user_sessions(admin["id"])
     token = create_session(admin["id"])
     set_session_cookie(response, token)
-    return MessageOut(message="Contraseña actualizada correctamente.")
+    return ChangePasswordOut(
+        message="Contraseña actualizada correctamente.",
+        access_token=token,
+    )
 
 
 @router.get("/products", response_model=list[ProductOut])

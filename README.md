@@ -83,24 +83,24 @@ completa de la API (por ejemplo `https://api.tudominio.com/api`).
 
 ### Sesión con frontend y API en dominios distintos
 
-La cookie del panel usa `SameSite=Strict` por defecto. Si el frontend y la API
-están en dominios distintos, el navegador no enviará la cookie y el panel volverá
-al login inmediatamente después de entrar.
+El panel acepta dos formas de autenticación: la cookie HttpOnly y un token
+`Authorization: Bearer`. Después del login, el frontend guarda el token en
+`sessionStorage` y lo envía en cada petición administrativa. Así la sesión sigue
+funcionando aunque el navegador bloquee cookies de terceros (Safari, Firefox o
+Chrome con esa opción activada).
 
 - Con dos subdominios de un dominio propio (`app.tudominio.com` y
-  `api.tudominio.com`) se consideran el mismo sitio; no hay que cambiar nada.
-- Con dos subdominios de Render (`*.onrender.com`) son sitios distintos. En el
-  backend define:
+  `api.tudominio.com`) la cookie HttpOnly funciona y es el mecanismo preferido.
+- Con dos subdominios de Render (`*.onrender.com`) el token cubre el caso de los
+  navegadores que bloquean cookies de terceros. No hace falta cambiar
+  `COOKIE_SAMESITE` para que el panel funcione.
+- Si además quieres que la cookie viaje entre dominios, define
+  `COOKIE_SECURE=true` y `COOKIE_SAMESITE=none`. `SameSite=None` exige HTTPS.
 
-  ```env
-  COOKIE_SECURE=true
-  COOKIE_SAMESITE=none
-  ```
-
-`SameSite=None` exige HTTPS y `COOKIE_SECURE=true`. Algunos navegadores bloquean
-cookies de terceros; para producción se recomienda usar subdominios de un dominio
-propio. Las peticiones de escritura del panel también validan el encabezado
-`Origin` para evitar CSRF.
+Las peticiones de escritura del panel validan el encabezado `Origin` para evitar
+CSRF. El token se guarda en `sessionStorage`, por lo que se borra al cerrar la
+pestaña; para la opción más segura se recomienda usar subdominios de un dominio
+propio y mantener la cookie HttpOnly.
 
 ## Migración desde SQLite
 
@@ -169,7 +169,7 @@ al puerto de la base de datos y guarda la cadena de conexión únicamente en
 | `SESSION_HOURS` | Duración de la sesión del panel, en horas. |
 | `MAX_UPLOAD_MB` | Tamaño máximo por imagen. |
 | `COOKIE_SECURE` | `true` cuando la web se sirve por HTTPS. |
-| `COOKIE_SAMESITE` | `strict` por defecto. Usa `none` con `COOKIE_SECURE=true` si el frontend y la API están en sitios distintos. |
+| `COOKIE_SAMESITE` | `strict` por defecto. `none` con `COOKIE_SECURE=true` permite la cookie entre sitios; el panel también funciona con token si no se configura. |
 | `CORS_ORIGINS` | Orígenes permitidos, separados por coma. |
 | `UPLOADS_DIR` | Ruta opcional de las imágenes. |
 | `FRONTEND_DIST` | Ruta opcional del build del frontend. |
@@ -182,12 +182,13 @@ Pública:
 - `GET /api/products/{id}` — detalle de un producto publicado. El `id` es un ObjectId de MongoDB en formato de texto.
 - `GET /api/health` — estado del servidor y de MongoDB.
 
-Administración (requiere cookie de sesión):
+Administración (requiere cookie de sesión o encabezado
+`Authorization: Bearer <access_token>`):
 
-- `POST /api/admin/login`
+- `POST /api/admin/login` — devuelve el usuario y `access_token`.
 - `POST /api/admin/logout`
 - `GET /api/admin/me`
-- `POST /api/admin/change-password`
+- `POST /api/admin/change-password` — devuelve un `access_token` nuevo.
 - `GET /api/admin/products` — incluye borradores.
 - `POST /api/admin/products` — `multipart/form-data`, con `imagen` opcional.
 - `PUT /api/admin/products/{id}` — actualiza campos y foto.

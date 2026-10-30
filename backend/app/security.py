@@ -107,14 +107,29 @@ def delete_user_sessions(user_id: Any) -> None:
     get_db().sessions.delete_many({"user_id": user_id})
 
 
-def get_session_user(request: Request) -> dict[str, Any] | None:
-    token = request.cookies.get(settings.cookie_name)
-    if not token:
-        return None
+def _request_tokens(request: Request) -> list[str]:
+    tokens: list[str] = []
 
-    from .database import get_db
+    authorization = request.headers.get("authorization", "")
+    scheme, _, credentials = authorization.partition(" ")
+    if scheme.lower() == "bearer":
+        token = credentials.strip()
+        if token:
+            tokens.append(token)
 
-    db = get_db()
+    cookie_token = request.cookies.get(settings.cookie_name)
+    if cookie_token and cookie_token not in tokens:
+        tokens.append(cookie_token)
+
+    return tokens
+
+
+def delete_request_sessions(request: Request) -> None:
+    for token in _request_tokens(request):
+        delete_session(token)
+
+
+def _session_user(db: Any, token: str) -> dict[str, Any] | None:
     session = db.sessions.find_one({"token_hash": _token_hash(token)})
     if session is None:
         return None
@@ -138,13 +153,28 @@ def get_session_user(request: Request) -> dict[str, Any] | None:
     return {"id": user["_id"], "email": user["email"]}
 
 
+def get_session_user(request: Request) -> dict[str, Any] | None:
+    tokens = _request_tokens(request)
+    if not tokens:
+        return None
+
+    from .database import get_db
+
+    db = get_db()
+    for token in tokens:
+        user = _session_user(db, token)
+        if user is not None:
+            return user
+    return None
+
+
 def require_admin(request: Request) -> dict[str, Any]:
     user = get_session_user(request)
     if user is None:
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="Tu sesión expiró. Inicia sesión de nuevo.",
-            headers={"WWW-Authenticate": "Cookie"},
+            headers={"WWW-Authenticate": "Bearer"},
         )
     return user
 

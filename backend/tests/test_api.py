@@ -89,6 +89,33 @@ def test_login_rejects_wrong_password(client: TestClient):
     assert response.json()["detail"] == "Correo o contraseña incorrectos."
 
 
+def test_cors_allows_authorization_header(client: TestClient):
+    response = client.options(
+        "/api/admin/login",
+        headers={
+            "Origin": "http://localhost:5173",
+            "Access-Control-Request-Method": "POST",
+            "Access-Control-Request-Headers": "authorization,content-type",
+        },
+    )
+    assert response.status_code == 200
+    assert "authorization" in response.headers["access-control-allow-headers"].lower()
+
+
+def test_bearer_token_works_without_cookies(client: TestClient):
+    response = login(client)
+    assert response.status_code == 200
+    token = response.json()["access_token"]
+    assert token
+
+    client.cookies.clear()
+    headers = {"Authorization": f"Bearer {token}"}
+    assert client.get("/api/admin/me", headers=headers).status_code == 200
+
+    assert client.post("/api/admin/logout", headers=headers).status_code == 200
+    assert client.get("/api/admin/me", headers=headers).status_code == 401
+
+
 def test_full_product_lifecycle_with_image(client: TestClient):
     response = login(client)
     assert response.status_code == 200
@@ -266,6 +293,7 @@ def test_change_password_and_logout(client: TestClient):
         },
     )
     assert changed.status_code == 200
+    assert changed.json()["access_token"]
 
     assert client.post("/api/admin/logout").status_code == 200
     assert client.get("/api/admin/me").status_code == 401
