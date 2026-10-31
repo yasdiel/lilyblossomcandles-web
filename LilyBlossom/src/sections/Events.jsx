@@ -1,5 +1,123 @@
+import { useState } from "react";
 import { assetUrl } from "../lib/api";
 import { formatEuroPrice } from "../lib/money";
+
+const ORDER_EMAIL = "lilyblossomcandles@gmail.com";
+
+function EventCard({ event, index }) {
+  const prices = event.precios || [];
+  const [selectedPrice, setSelectedPrice] = useState(prices[0] || null);
+
+  const orderHref = selectedPrice
+    ? `mailto:${ORDER_EMAIL}?subject=${encodeURIComponent(
+        `Event candle order - ${event.nombre}`,
+      )}&body=${encodeURIComponent(
+        `Hello Lily Blossom Candles,\n\nI would like to order this event candle package:\n\nProduct: ${event.nombre}\nQuantity: ${selectedPrice.unidades} ${
+          selectedPrice.unidades === 1 ? "candle" : "candles"
+        }\nPackage price: ${formatEuroPrice(selectedPrice.precio)}\n\nThank you.`,
+      )}`
+    : null;
+
+  return (
+    <article className="group">
+      <div className="aspect-[4/5] overflow-hidden border border-[var(--ash)] bg-[var(--paper)]">
+        {event.imagen_url ? (
+          <img
+            src={assetUrl(event.imagen_url)}
+            alt={event.nombre}
+            loading="lazy"
+            className="h-full w-full object-cover transition-transform duration-700 group-hover:scale-[1.03]"
+          />
+        ) : (
+          <div className="flex h-full items-center justify-center">
+            <span className="font-body text-[10px] uppercase tracking-[0.22em] text-[var(--muted)]">
+              Event piece
+            </span>
+          </div>
+        )}
+      </div>
+      <div className="mt-5 flex gap-4">
+        <span className="font-body mt-1 text-[10px] uppercase tracking-[0.22em] text-[var(--amber)]">
+          {String(index + 1).padStart(2, "0")}
+        </span>
+        <div className="min-w-0 flex-1">
+          <h3 className="font-display text-2xl leading-tight text-[var(--cacao)] md:text-3xl">
+            {event.nombre}
+          </h3>
+          {event.descripcion && (
+            <p className="font-body mt-2 text-sm font-light leading-relaxed text-[var(--muted)]">
+              {event.descripcion}
+            </p>
+          )}
+          {prices.length > 0 && (
+            <div className="mt-5">
+              <p className="font-body mb-2 text-[10px] uppercase tracking-[0.18em] text-[var(--muted)]">
+                Choose your quantity
+              </p>
+              <fieldset className="space-y-2">
+                <legend className="sr-only">
+                  Choose a price for {event.nombre}
+                </legend>
+                {prices.map((price) => {
+                  const isSelected = selectedPrice?.unidades === price.unidades;
+                  return (
+                    <label
+                      key={price.unidades}
+                      className={`font-body flex w-full cursor-pointer items-center justify-between gap-3 border px-4 py-3 text-left transition-colors has-[:focus-visible]:outline has-[:focus-visible]:outline-2 has-[:focus-visible]:outline-offset-2 has-[:focus-visible]:outline-[var(--amber)] ${
+                        isSelected
+                          ? "border-[var(--cacao)] bg-[var(--cacao)] text-[var(--paper)]"
+                          : "border-[var(--ash)] bg-[var(--paper)] text-[var(--cacao)] hover:border-[var(--cacao)]"
+                      }`}
+                    >
+                      <input
+                        type="radio"
+                        name={`event-price-${event.id}`}
+                        value={price.unidades}
+                        checked={isSelected}
+                        onChange={() => setSelectedPrice(price)}
+                        className="sr-only"
+                      />
+                      <span className="flex items-center gap-3">
+                        <span
+                          aria-hidden="true"
+                          className={`flex h-4 w-4 shrink-0 items-center justify-center rounded-full border ${
+                            isSelected
+                              ? "border-[var(--paper)]"
+                              : "border-[var(--ash)]"
+                          }`}
+                        >
+                          {isSelected && (
+                            <span className="h-2 w-2 rounded-full bg-[var(--paper)]" />
+                          )}
+                        </span>
+                        <span className="text-sm">
+                          {price.unidades}{" "}
+                          {price.unidades === 1 ? "candle" : "candles"}
+                        </span>
+                      </span>
+                      <span className="text-sm font-medium">
+                        {formatEuroPrice(price.precio)}
+                      </span>
+                    </label>
+                  );
+                })}
+              </fieldset>
+              {selectedPrice && (
+                <a
+                  href={orderHref}
+                  className="font-body mt-3 block border border-[var(--cacao)] bg-[var(--cacao)] px-4 py-3 text-center text-sm tracking-wide text-[var(--paper)] transition-colors hover:bg-transparent hover:text-[var(--cacao)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--amber)]"
+                >
+                  Request {selectedPrice.unidades}{" "}
+                  {selectedPrice.unidades === 1 ? "candle" : "candles"}
+                </a>
+              )}
+            </div>
+          )}
+        </div>
+      </div>
+    </article>
+  );
+}
 
 export function Events({ events, status, onRetry }) {
   return (
@@ -80,54 +198,7 @@ export function Events({ events, status, onRetry }) {
         ) : (
           <div className="mt-12 grid gap-x-6 gap-y-12 sm:grid-cols-2 lg:grid-cols-3">
             {events.map((event, index) => (
-              <article key={event.id} className="group">
-                <div className="aspect-[4/5] overflow-hidden border border-[var(--ash)] bg-[var(--paper)]">
-                  {event.imagen_url ? (
-                    <img
-                      src={assetUrl(event.imagen_url)}
-                      alt={event.nombre}
-                      loading="lazy"
-                      className="h-full w-full object-cover transition-transform duration-700 group-hover:scale-[1.03]"
-                    />
-                  ) : (
-                    <div className="flex h-full items-center justify-center">
-                      <span className="font-body text-[10px] uppercase tracking-[0.22em] text-[var(--muted)]">
-                        Event piece
-                      </span>
-                    </div>
-                  )}
-                </div>
-                <div className="mt-5 flex gap-4">
-                  <span className="font-body mt-1 text-[10px] uppercase tracking-[0.22em] text-[var(--amber)]">
-                    {String(index + 1).padStart(2, "0")}
-                  </span>
-                  <div className="min-w-0">
-                    <h3 className="font-display text-2xl leading-tight text-[var(--cacao)] md:text-3xl">
-                      {event.nombre}
-                    </h3>
-                    {event.descripcion && (
-                      <p className="font-body mt-2 text-sm font-light leading-relaxed text-[var(--muted)]">
-                        {event.descripcion}
-                      </p>
-                    )}
-                    {event.precios?.length > 0 && (
-                      <ul className="font-body mt-4 space-y-1.5 border-t border-[var(--ash)] pt-3 text-sm text-[var(--cacao)]">
-                        {event.precios.map(({ unidades, precio }) => (
-                          <li key={unidades} className="flex items-baseline gap-2">
-                            <span className="font-light text-[var(--muted)]">
-                              {unidades} {unidades === 1 ? "unidad" : "unidades"}
-                            </span>
-                            <span aria-hidden="true" className="text-[var(--ash)]">
-                              ·
-                            </span>
-                            <span>{formatEuroPrice(precio)}</span>
-                          </li>
-                        ))}
-                      </ul>
-                    )}
-                  </div>
-                </div>
-              </article>
+              <EventCard key={event.id} event={event} index={index} />
             ))}
           </div>
         )}
