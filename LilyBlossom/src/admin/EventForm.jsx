@@ -8,11 +8,28 @@ const EMPTY_FORM = {
   activo: true,
 };
 
+const EMPTY_PRICES = [
+  { unidades: "1", precio: "" },
+  { unidades: "12", precio: "" },
+  { unidades: "25", precio: "" },
+  { unidades: "50", precio: "" },
+];
+
 const MAX_FILE_BYTES = 5 * 1024 * 1024;
 const ALLOWED_TYPES = ["image/jpeg", "image/png", "image/webp"];
 
 function fieldClass() {
   return "font-body mt-2 w-full border border-[var(--ash)] bg-[var(--paper)] px-3.5 py-2.5 text-sm text-[var(--cacao)] outline-none transition-colors placeholder:text-[var(--muted)]/60 focus:border-[var(--cacao)]";
+}
+
+function getEventPrices(event) {
+  if (!event?.precios?.length) {
+    return EMPTY_PRICES.map((price) => ({ ...price }));
+  }
+  return event.precios.map(({ unidades, precio }) => ({
+    unidades: String(unidades),
+    precio: String(precio),
+  }));
 }
 
 export default function EventForm({ event, onClose, onSaved }) {
@@ -25,6 +42,7 @@ export default function EventForm({ event, onClose, onSaved }) {
         }
       : EMPTY_FORM,
   );
+  const [prices, setPrices] = useState(() => getEventPrices(event));
   const [file, setFile] = useState(null);
   const [preview, setPreview] = useState(() => assetUrl(event?.imagen_url));
   const [error, setError] = useState("");
@@ -42,6 +60,22 @@ export default function EventForm({ event, onClose, onSaved }) {
 
   const updateField = (name, value) => {
     setForm((current) => ({ ...current, [name]: value }));
+  };
+
+  const updatePrice = (index, name, value) => {
+    setPrices((current) =>
+      current.map((price, priceIndex) =>
+        priceIndex === index ? { ...price, [name]: value } : price,
+      ),
+    );
+  };
+
+  const addPrice = () => {
+    setPrices((current) => [...current, { unidades: "", precio: "" }]);
+  };
+
+  const removePrice = (index) => {
+    setPrices((current) => current.filter((_, priceIndex) => priceIndex !== index));
   };
 
   const handleFileChange = (selectedEvent) => {
@@ -82,10 +116,47 @@ export default function EventForm({ event, onClose, onSaved }) {
       return;
     }
 
+    const unitPrice = prices[0];
+    if (
+      !unitPrice ||
+      Number(unitPrice.unidades) !== 1 ||
+      unitPrice.precio.trim() === "" ||
+      !Number.isFinite(Number(unitPrice.precio)) ||
+      Number(unitPrice.precio) < 0 ||
+      Number(unitPrice.precio) > 1_000_000
+    ) {
+      setError("Indica un precio válido para 1 unidad.");
+      return;
+    }
+
+    const configuredPrices = [{ unidades: 1, precio: Number(unitPrice.precio) }];
+    const seenUnits = new Set([1]);
+    for (const price of prices.slice(1)) {
+      if (price.precio.trim() === "") continue;
+      const unidades = Number(price.unidades);
+      const precio = Number(price.precio);
+      if (!Number.isInteger(unidades) || unidades < 2 || unidades > 1_000_000) {
+        setError("Cada precio por cantidad debe tener al menos 2 unidades.");
+        return;
+      }
+      if (!Number.isFinite(precio) || precio < 0 || precio > 1_000_000) {
+        setError("Escribe un precio válido para cada cantidad.");
+        return;
+      }
+      if (seenUnits.has(unidades)) {
+        setError("No puede haber dos precios para la misma cantidad.");
+        return;
+      }
+      seenUnits.add(unidades);
+      configuredPrices.push({ unidades, precio });
+    }
+    configuredPrices.sort((first, second) => first.unidades - second.unidades);
+
     const data = new FormData();
     data.append("nombre", nombre);
     data.append("descripcion", form.descripcion.trim());
     data.append("activo", form.activo ? "true" : "false");
+    data.append("precios", JSON.stringify(configuredPrices));
     if (file) data.append("imagen", file);
 
     setSaving(true);
@@ -214,6 +285,85 @@ export default function EventForm({ event, onClose, onSaved }) {
                 className={`${fieldClass()} resize-none`}
               />
             </label>
+
+            <fieldset className="mt-5 border border-[var(--ash)] bg-[var(--paper)] p-4">
+              <legend className="font-body px-1 text-[11px] uppercase tracking-[0.16em] text-[var(--muted)]">
+                Precios por cantidad · €
+              </legend>
+              <p className="font-body mb-4 text-xs font-light leading-relaxed text-[var(--muted)]">
+                El precio de 1 unidad es obligatorio. Las cantidades sugeridas
+                son editables; deja el precio vacío para no publicar esa opción.
+              </p>
+              <div className="space-y-3">
+                {prices.map((price, index) => (
+                  <div
+                    key={index}
+                    className="grid grid-cols-[minmax(0,1fr)_minmax(0,1fr)_auto] items-end gap-3"
+                  >
+                    <label className="block">
+                      <span className="font-body text-[10px] uppercase tracking-[0.12em] text-[var(--muted)]">
+                        Unidades
+                      </span>
+                      <input
+                        type="number"
+                        min={index === 0 ? 1 : 2}
+                        max="1000000"
+                        step="1"
+                        required={index === 0}
+                        disabled={index === 0}
+                        value={price.unidades}
+                        onChange={(inputEvent) =>
+                          updatePrice(index, "unidades", inputEvent.target.value)
+                        }
+                        aria-label={`Unidades de la opción de precio ${index + 1}`}
+                        className={fieldClass()}
+                      />
+                    </label>
+                    <label className="block">
+                      <span className="font-body text-[10px] uppercase tracking-[0.12em] text-[var(--muted)]">
+                        Precio · €
+                      </span>
+                      <input
+                        type="number"
+                        min="0"
+                        max="1000000"
+                        max="1000000"
+                        step="0.01"
+                        required={index === 0}
+                        value={price.precio}
+                        onChange={(inputEvent) =>
+                          updatePrice(index, "precio", inputEvent.target.value)
+                        }
+                        aria-label={`Precio de la opción de ${price.unidades || "n"} unidades`}
+                        placeholder="8,00"
+                        className={fieldClass()}
+                      />
+                    </label>
+                    {index === 0 ? (
+                      <span className="font-body mb-3 w-8 text-center text-xs text-[var(--muted)]">
+                        —
+                      </span>
+                    ) : (
+                      <button
+                        type="button"
+                        onClick={() => removePrice(index)}
+                        aria-label={`Eliminar opción de precio ${index + 1}`}
+                        className="mb-1 h-10 w-8 text-lg text-[var(--muted)] transition-colors hover:text-[var(--cacao)]"
+                      >
+                        ×
+                      </button>
+                    )}
+                  </div>
+                ))}
+              </div>
+              <button
+                type="button"
+                onClick={addPrice}
+                className="font-body mt-4 border border-[var(--ash)] px-3 py-2 text-xs text-[var(--cacao)] transition-colors hover:border-[var(--cacao)]"
+              >
+                Añadir cantidad
+              </button>
+            </fieldset>
 
             <label className="mt-4 flex cursor-pointer items-start gap-3 border border-[var(--ash)] bg-[var(--paper)] px-4 py-3">
               <input

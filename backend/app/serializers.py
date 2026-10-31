@@ -46,6 +46,7 @@ def event_to_dict(document: Mapping[str, Any]) -> dict[str, Any]:
         "id": str(document["_id"]),
         "nombre": document.get("nombre", ""),
         "descripcion": document.get("descripcion", ""),
+        "precios": document.get("precios", []),
         "imagen_url": _image_url(document),
         "activo": bool(document.get("activo", False)),
         "created_at": _iso(document.get("created_at")) or "",

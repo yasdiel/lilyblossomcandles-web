@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import json
 import math
 import re
 from typing import Annotated, Any
@@ -90,7 +91,9 @@ def _validate_product_fields(
     return nombre, notas, peso, round(precio, 2), vaso, cera
 
 
-def _validate_event_fields(nombre: str, descripcion: str) -> tuple[str, str]:
+def _validate_event_fields(
+    nombre: str, descripcion: str, precios: str
+) -> tuple[str, str, list[dict[str, int | float]]]:
     nombre = nombre.strip()
     descripcion = descripcion.strip()
 
@@ -103,7 +106,55 @@ def _validate_event_fields(nombre: str, descripcion: str) -> tuple[str, str]:
             422, "La descripción no puede superar los 600 caracteres."
         )
 
-    return nombre, descripcion
+    try:
+        parsed_prices = json.loads(precios)
+    except (TypeError, json.JSONDecodeError) as exc:
+        raise HTTPException(422, "Los precios por cantidad no son válidos.") from exc
+
+    if not isinstance(parsed_prices, list) or not parsed_prices:
+        raise HTTPException(422, "Indica al menos el precio para 1 unidad.")
+
+    validated_prices: list[dict[str, int | float]] = []
+    seen_units: set[int] = set()
+    for item in parsed_prices:
+        if not isinstance(item, dict):
+            raise HTTPException(422, "Cada precio debe incluir unidades y precio.")
+        unidades = item.get("unidades")
+        precio = item.get("precio")
+        if (
+            isinstance(unidades, bool)
+            or not isinstance(unidades, int)
+            or unidades < 1
+            or unidades > 1_000_000
+        ):
+            raise HTTPException(
+                422,
+                "Las unidades deben ser un número entero positivo menor o igual a 1.000.000.",
+            )
+        if unidades in seen_units:
+            raise HTTPException(422, "No puede haber dos precios para la misma cantidad.")
+        if (
+            isinstance(precio, bool)
+            or not isinstance(precio, (int, float))
+            or not math.isfinite(precio)
+            or precio < 0
+            or precio > 1_000_000
+        ):
+            raise HTTPException(
+                422, "Cada precio debe ser un número válido mayor o igual a 0."
+            )
+        seen_units.add(unidades)
+        validated_prices.append({"unidades": unidades, "precio": round(precio, 2)})
+
+    if validated_prices[0]["unidades"] != 1:
+        raise HTTPException(422, "El primer precio debe corresponder a 1 unidad.")
+    if any(item["unidades"] == 1 for item in validated_prices[1:]):
+        raise HTTPException(422, "Solo puede haber un precio para 1 unidad.")
+    validated_prices[1:] = sorted(
+        validated_prices[1:], key=lambda item: item["unidades"]
+    )
+
+    return nombre, descripcion, validated_prices
 
 
 @router.post("/login", response_model=LoginOut)
@@ -361,10 +412,11 @@ async def create_event(
     _admin: Annotated[dict[str, Any], Depends(require_admin)],
     nombre: Annotated[str, Form()] = "",
     descripcion: Annotated[str, Form()] = "",
+    precios: Annotated[str, Form()] = "[]",
     activo: Annotated[bool, Form()] = True,
     imagen: Annotated[UploadFile | None, File()] = None,
 ) -> dict[str, Any]:
-    nombre, descripcion = _validate_event_fields(nombre, descripcion)
+    nombre, descripcion, precios = _validate_event_fields(nombre, descripcion, precios)
 
     if imagen is None or not imagen.filename:
         raise HTTPException(422, "La foto del producto para eventos es obligatoria.")
@@ -378,6 +430,7 @@ async def create_event(
     document = {
         "nombre": nombre,
         "descripcion": descripcion,
+        "precios": precios,
         "imagen_id": image_id,
         "activo": activo,
         "created_at": now,
@@ -400,10 +453,11 @@ async def update_event(
     _admin: Annotated[dict[str, Any], Depends(require_admin)],
     nombre: Annotated[str, Form()] = "",
     descripcion: Annotated[str, Form()] = "",
+    precios: Annotated[str, Form()] = "[]",
     activo: Annotated[bool, Form()] = True,
     imagen: Annotated[UploadFile | None, File()] = None,
 ) -> dict[str, Any]:
-    nombre, descripcion = _validate_event_fields(nombre, descripcion)
+    nombre, descripcion, precios = _validate_event_fields(nombre, descripcion, precios)
 
     object_id = to_object_id(event_id)
     db = get_db()
@@ -437,6 +491,7 @@ async def update_event(
                 "$set": {
                     "nombre": nombre,
                     "descripcion": descripcion,
+                    "precios": precios,
                     "imagen_id": new_image_id,
                     "imagen": new_legacy_image,
                     "activo": activo,

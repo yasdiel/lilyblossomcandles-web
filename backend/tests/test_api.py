@@ -251,11 +251,22 @@ def test_full_product_lifecycle_with_image(client: TestClient):
 def test_event_product_lifecycle_with_image(client: TestClient):
     assert login(client).status_code == 200
 
+    invalid_prices = client.post(
+        "/api/admin/events",
+        data={
+            "nombre": "Wedding Table",
+            "precios": '[{"unidades":12,"precio":84}]',
+        },
+        files={"imagen": ("event.png", PNG_BYTES, "image/png")},
+    )
+    assert invalid_prices.status_code == 422
+
     missing_photo = client.post(
         "/api/admin/events",
         data={
             "nombre": "Wedding Table",
             "descripcion": "Neutral candles for a wedding reception.",
+            "precios": '[{"unidades":1,"precio":8},{"unidades":50,"precio":300},{"unidades":12,"precio":84},{"unidades":25,"precio":160}]',
             "activo": "true",
         },
     )
@@ -266,6 +277,7 @@ def test_event_product_lifecycle_with_image(client: TestClient):
         data={
             "nombre": "Wedding Table",
             "descripcion": "Neutral candles for a wedding reception.",
+            "precios": '[{"unidades":1,"precio":8},{"unidades":12,"precio":84},{"unidades":25,"precio":160},{"unidades":50,"precio":300}]',
             "activo": "true",
         },
         files={"imagen": ("event.png", PNG_BYTES, "image/png")},
@@ -274,6 +286,12 @@ def test_event_product_lifecycle_with_image(client: TestClient):
     event = created.json()
     assert event["nombre"] == "Wedding Table"
     assert event["descripcion"] == "Neutral candles for a wedding reception."
+    assert event["precios"] == [
+        {"unidades": 1, "precio": 8},
+        {"unidades": 12, "precio": 84},
+        {"unidades": 25, "precio": 160},
+        {"unidades": 50, "precio": 300},
+    ]
     assert event["imagen_url"].startswith("/api/images/")
     assert event["activo"] is True
     assert ObjectId.is_valid(event["id"])
@@ -285,13 +303,15 @@ def test_event_product_lifecycle_with_image(client: TestClient):
     assert get_db().images.find_one({"_id": event_image_id}) is not None
 
     public = client.get("/api/events")
-    assert any(item["id"] == event["id"] for item in public.json())
+    public_event = next(item for item in public.json() if item["id"] == event["id"])
+    assert public_event["precios"] == event["precios"]
 
     hidden = client.post(
         "/api/admin/events",
         data={
             "nombre": "Private Celebration",
             "descripcion": "",
+            "precios": '[{"unidades":1,"precio":9}]',
             "activo": "false",
         },
         files={"imagen": ("event-private.png", PNG_BYTES, "image/png")},
@@ -314,6 +334,7 @@ def test_event_product_lifecycle_with_image(client: TestClient):
         data={
             "nombre": "Wedding Table Updated",
             "descripcion": "A softer palette for the reception.",
+            "precios": '[{"unidades":1,"precio":9},{"unidades":10,"precio":70}]',
             "activo": "true",
         },
         files={"imagen": ("event-updated.png", PNG_BYTES, "image/png")},
@@ -321,6 +342,10 @@ def test_event_product_lifecycle_with_image(client: TestClient):
     assert updated.status_code == 200, updated.text
     updated_event = updated.json()
     assert updated_event["nombre"] == "Wedding Table Updated"
+    assert updated_event["precios"] == [
+        {"unidades": 1, "precio": 9},
+        {"unidades": 10, "precio": 70},
+    ]
     assert updated_event["imagen_url"] != event["imagen_url"]
     assert client.get(event["imagen_url"]).status_code == 404
     assert get_db().images.find_one({"_id": event_image_id}) is None

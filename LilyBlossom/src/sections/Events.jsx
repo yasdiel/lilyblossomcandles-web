@@ -1,4 +1,5 @@
 import { assetUrl } from "../lib/api";
+import { formatEuroPrice } from "../lib/money";
 
 export function Events({ events, status, onRetry }) {
   return (
@@ -108,6 +109,21 @@ export function Events({ events, status, onRetry }) {
                       <p className="font-body mt-2 text-sm font-light leading-relaxed text-[var(--muted)]">
                         {event.descripcion}
                       </p>
+                    )}
+                    {event.precios?.length > 0 && (
+                      <ul className="font-body mt-4 space-y-1.5 border-t border-[var(--ash)] pt-3 text-sm text-[var(--cacao)]">
+                        {event.precios.map(({ unidades, precio }) => (
+                          <li key={unidades} className="flex items-baseline gap-2">
+                            <span className="font-light text-[var(--muted)]">
+                              {unidades} {unidades === 1 ? "unidad" : "unidades"}
+                            </span>
+                            <span aria-hidden="true" className="text-[var(--ash)]">
+                              ·
+                            </span>
+                            <span>{formatEuroPrice(precio)}</span>
+                          </li>
+                        ))}
+                      </ul>
                     )}
                   </div>
                 </div>

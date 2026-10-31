@@ -46,10 +46,16 @@ class ProductOut(BaseModel):
     updated_at: str
 
 
+class EventPriceOut(BaseModel):
+    unidades: int
+    precio: float
+
+
 class EventProductOut(BaseModel):
     id: str
     nombre: str
     descripcion: str
+    precios: list[EventPriceOut] = Field(default_factory=list)
     imagen_url: str | None = None
     activo: bool
     created_at: str
