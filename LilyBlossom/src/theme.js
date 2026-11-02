@@ -18,5 +18,11 @@ html{scroll-behavior:smooth}
   60%{transform:scale(1.04,.96) rotate(-1.5deg);opacity:.9}
 }
 .flame{transform-origin:50% 100%;animation:flicker 2.6s ease-in-out infinite}
-@media (prefers-reduced-motion:reduce){.flame{animation:none}}
+.hero-slide{opacity:0;transform:scale(1.06);transition:opacity 1.6s ease,transform 8s ease}
+.hero-slide.is-active{opacity:1;transform:scale(1)}
+.hero-scrim{background:linear-gradient(180deg,rgba(38,24,16,.66) 0%,rgba(38,24,16,.5) 45%,rgba(38,24,16,.8) 100%)}
+@media (prefers-reduced-motion:reduce){
+  .flame{animation:none}
+  .hero-slide{transition:none;transform:none}
+}
 `;
