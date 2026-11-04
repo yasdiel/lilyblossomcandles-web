@@ -3,6 +3,7 @@ import { THEME } from "./theme";
 import { api } from "./lib/api";
 import { useCart } from "./hooks/useCart";
 import Header from "./components/Header";
+import IntroSplash from "./components/IntroSplash";
 import Contact from "./components/Contact";
 import CartDrawer from "./components/CartDrawer";
 import Hero from "./sections/Hero";
@@ -86,6 +87,7 @@ export default function Storefront() {
   return (
     <div className="font-body min-h-screen bg-[var(--bone)] text-[var(--cacao)]">
       <style>{THEME}</style>
+      <IntroSplash />
       <Header count={count} onCartClick={openCart} />
       <main>
         <Hero />
