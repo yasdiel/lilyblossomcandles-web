@@ -5,7 +5,7 @@ export function Header({ count, onCartClick }) {
   return (
     <header className="sticky top-0 z-20 border-b border-[var(--ash)] bg-[var(--bone)]/90 backdrop-blur">
       <div className="mx-auto flex w-full flex-col items-center px-6 py-0">
-        <div className="relative flex h-24 w-full items-center justify-center">
+        <div className="relative flex h-[110px] w-full items-center justify-center">
           <Logo />
           <button
             className="absolute right-0 p-2 text-[var(--cacao)] transition-colors hover:text-[var(--amber)]"
