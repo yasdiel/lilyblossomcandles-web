@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import Candle from "../components/Candle";
+import Logo from "../components/Logo";
 
 const HERO_IMAGES = ["/fondo-1.jpg", "/fondo-2.jpg", "/fondo-3.jpg"];
 const SLIDE_INTERVAL = 6000;
@@ -21,7 +22,7 @@ export function Hero() {
   return (
     <section
       id="inicio"
-      className="relative isolate mx-auto grid min-h-[78svh] w-full grid-cols-1 items-center gap-6 overflow-hidden px-6 py-16 md:min-h-0 md:grid-cols-2 md:py-10"
+      className="relative isolate mx-auto grid min-h-svh w-full grid-cols-1 items-center justify-items-center gap-6 overflow-hidden px-6 py-16 text-center md:grid-cols-2 md:py-10"
     >
       <div className="absolute inset-0 -z-10 md:hidden" aria-hidden="true">
         {HERO_IMAGES.map((src, index) => (
@@ -39,7 +40,10 @@ export function Hero() {
         <div className="hero-scrim absolute inset-0" />
       </div>
 
-      <div className="min-w-0">
+      <div className="flex min-w-0 flex-col items-center">
+        <div id="hero-logo" className="mb-5 inline-flex overflow-hidden rounded-2xl border border-[var(--ash)] bg-[var(--bone)] px-3 py-1">
+          <Logo imageClassName="h-[140px]" />
+        </div>
         <h1 className="font-display text-4xl font-normal leading-[1.05] text-[var(--paper)] drop-shadow-[0_2px_18px_rgba(0,0,0,.35)] md:text-6xl md:text-[var(--cacao)] md:drop-shadow-none">
           Slow light for <br className="hidden md:block" />
           quiet hours.
