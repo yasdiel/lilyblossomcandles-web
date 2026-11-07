@@ -41,10 +41,10 @@ export function Hero() {
       </div>
 
       <div className="flex min-w-0 flex-col items-center">
-        <div id="hero-logo" className="mb-5 inline-flex">
-          <Logo imageClassName="h-[295px]" />
+        <div id="hero-logo" className="inline-flex">
+          <Logo imageClassName="h-[325px]" />
         </div>
-        <h1 className="font-display text-4xl font-normal leading-[1.05] text-[var(--paper)] drop-shadow-[0_2px_18px_rgba(0,0,0,.35)] md:text-6xl md:text-[var(--cacao)] md:drop-shadow-none">
+        <h1 className="m-0 font-display text-4xl font-normal leading-[1.05] text-[var(--paper)] drop-shadow-[0_2px_18px_rgba(0,0,0,.35)] md:text-6xl md:text-[var(--cacao)] md:drop-shadow-none">
           Slow light for <br className="hidden md:block" />
           quiet hours.
         </h1>
