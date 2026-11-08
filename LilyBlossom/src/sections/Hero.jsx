@@ -1,5 +1,4 @@
 import { useEffect, useState } from "react";
-import Candle from "../components/Candle";
 import Logo from "../components/Logo";
 
 const HERO_IMAGES = ["/fondo-1.jpg", "/fondo-2.jpg", "/fondo-3.jpg"];
@@ -41,7 +40,7 @@ export function Hero() {
       </div>
 
       <div className="flex min-w-0 flex-col items-center">
-        <div id="hero-logo" className="inline-flex">
+        <div id="hero-logo" className="inline-flex md:hidden">
           <Logo imageClassName="h-[325px]" />
         </div>
         <h1 className="m-0 font-display text-4xl font-normal leading-[1.05] text-[var(--paper)] drop-shadow-[0_2px_18px_rgba(0,0,0,.35)] md:text-6xl md:text-[var(--cacao)] md:drop-shadow-none">
@@ -59,11 +58,8 @@ export function Hero() {
         </button>
       </div>
 
-      <div className="relative hidden aspect-[4/5] items-center justify-center overflow-hidden border border-[var(--ash)] bg-[var(--paper)] md:flex md:h-[420px] md:aspect-auto">
-        <div className="absolute inset-x-0 top-0 h-2/3 bg-[radial-gradient(ellipse_at_50%_55%,rgba(141,74,39,.22),transparent_65%)]" />
-        <div className="relative pb-4">
-          <Candle vaso="var(--sage)" cera="#EFE6D6" size={130} lit />
-        </div>
+      <div className="hidden items-center justify-center md:flex">
+        <Logo imageClassName="h-[325px]" />
       </div>
     </section>
   );
