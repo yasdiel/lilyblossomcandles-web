@@ -2,21 +2,9 @@ import { useState } from "react";
 import { assetUrl } from "../lib/api";
 import { formatEuroPrice } from "../lib/money";
 
-const ORDER_EMAIL = "lilyblossomcandles@gmail.com";
-
-function EventCard({ event, index }) {
+function EventCard({ event, index, onAdd }) {
   const prices = event.precios || [];
   const [selectedPrice, setSelectedPrice] = useState(prices[0] || null);
-
-  const orderHref = selectedPrice
-    ? `mailto:${ORDER_EMAIL}?subject=${encodeURIComponent(
-        `Event candle order - ${event.nombre}`,
-      )}&body=${encodeURIComponent(
-        `Hello Lily Blossom Candles,\n\nI would like to order this event candle package:\n\nProduct: ${event.nombre}\nQuantity: ${selectedPrice.unidades} ${
-          selectedPrice.unidades === 1 ? "candle" : "candles"
-        }\nPackage price: ${formatEuroPrice(selectedPrice.precio)}\n\nThank you.`,
-      )}`
-    : null;
 
   return (
     <article className="group">
@@ -103,13 +91,26 @@ function EventCard({ event, index }) {
                 })}
               </fieldset>
               {selectedPrice && (
-                <a
-                  href={orderHref}
+                <button
+                  type="button"
+                  onClick={() =>
+                    onAdd(
+                      {
+                        id: `event-${event.id}-${selectedPrice.unidades}`,
+                        nombre: event.nombre,
+                        peso: "Event package",
+                        imagen_url: event.imagen_url,
+                        precio: selectedPrice.precio / selectedPrice.unidades,
+                        currency: "EUR",
+                      },
+                      selectedPrice.unidades,
+                    )
+                  }
                   className="font-body mt-3 block border border-[var(--cacao)] bg-[var(--cacao)] px-4 py-3 text-center text-sm tracking-wide text-[var(--paper)] transition-colors hover:bg-transparent hover:text-[var(--cacao)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--amber)]"
                 >
-                  Request {selectedPrice.unidades}{" "}
-                  {selectedPrice.unidades === 1 ? "candle" : "candles"}
-                </a>
+                  Add {selectedPrice.unidades}{" "}
+                  {selectedPrice.unidades === 1 ? "candle" : "candles"} to order
+                </button>
               )}
             </div>
           )}
@@ -119,7 +120,7 @@ function EventCard({ event, index }) {
   );
 }
 
-export function Events({ events, status, onRetry }) {
+export function Events({ events, status, onRetry, onAdd }) {
   return (
     <section
       id="eventos"
@@ -198,7 +199,7 @@ export function Events({ events, status, onRetry }) {
         ) : (
           <div className="mt-12 grid gap-x-6 gap-y-12 sm:grid-cols-2 lg:grid-cols-3">
             {events.map((event, index) => (
-              <EventCard key={event.id} event={event} index={index} />
+              <EventCard key={event.id} event={event} index={index} onAdd={onAdd} />
             ))}
           </div>
         )}

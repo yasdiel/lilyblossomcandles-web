@@ -1,8 +1,12 @@
 import Candle from "./Candle";
 import { assetUrl } from "../lib/api";
-import { formatPrice } from "../lib/money";
+import { formatEuroPrice, formatPrice } from "../lib/money";
 
-export function CartDrawer({ cart, isOpen, onClose, onRemove, onUpdateQty, onCheckout, total }) {
+function formatCartPrice(value, currency) {
+  return currency === "EUR" ? formatEuroPrice(value) : formatPrice(value);
+}
+
+export function CartDrawer({ cart, isOpen, onClose, onRemove, onUpdateQty, onCheckout, totals }) {
   if (!isOpen) return null;
 
   return (
@@ -72,7 +76,9 @@ export function CartDrawer({ cart, isOpen, onClose, onRemove, onUpdateQty, onChe
                       </button>
                     </div>
                   </div>
-                  <span className="text-base text-[var(--cacao)]">{formatPrice(item.precio * item.qty)}</span>
+                  <span className="text-base text-[var(--cacao)]">
+                    {formatCartPrice(item.precio * item.qty, item.currency)}
+                  </span>
                 </li>
               ))}
             </ul>
@@ -80,9 +86,17 @@ export function CartDrawer({ cart, isOpen, onClose, onRemove, onUpdateQty, onChe
         </div>
 
         <div className="border-t border-[var(--ash)] px-6 py-5">
-          <div className="mb-4 flex items-baseline justify-between">
-            <span className="font-light text-[var(--muted)]">Subtotal</span>
-            <span className="text-lg text-[var(--cacao)]">{formatPrice(total)}</span>
+          <div className="mb-4 space-y-2">
+            {Object.entries(totals).map(([currency, amount]) => (
+              <div key={currency} className="flex items-baseline justify-between">
+                <span className="font-light text-[var(--muted)]">
+                  Subtotal ({currency})
+                </span>
+                <span className="text-lg text-[var(--cacao)]">
+                  {formatCartPrice(amount, currency)}
+                </span>
+              </div>
+            ))}
           </div>
           <button
             type="button"

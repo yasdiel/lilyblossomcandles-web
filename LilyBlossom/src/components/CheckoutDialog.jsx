@@ -1,11 +1,15 @@
 import { useEffect, useId, useRef, useState } from "react";
-import { formatPrice } from "../lib/money";
+import { formatEuroPrice, formatPrice } from "../lib/money";
 
 const ORDER_EMAIL = "lilyblossomcandles@gmail.com";
 const INPUT_CLASS =
   "font-body mt-1 w-full border border-[var(--ash)] bg-[var(--paper)] px-3 py-2.5 text-sm text-[var(--cacao)] outline-none transition-colors placeholder:text-[var(--muted)]/60 focus:border-[var(--cacao)]";
 
-export function CheckoutDialog({ open, cart, total, onClose }) {
+function formatCartPrice(value, currency) {
+  return currency === "EUR" ? formatEuroPrice(value) : formatPrice(value);
+}
+
+export function CheckoutDialog({ open, cart, totals, onClose }) {
   const titleId = useId();
   const dialogRef = useRef(null);
   const [deliveryMethod, setDeliveryMethod] = useState("home");
@@ -69,16 +73,20 @@ export function CheckoutDialog({ open, cart, total, onClose }) {
     const products = cart
       .map(
         (item) =>
-          `- ${item.qty} x ${item.nombre}${item.peso ? ` (${item.peso})` : ""} — ${formatPrice(item.precio * item.qty)}`,
+          `- ${item.qty} x ${item.nombre}${item.peso ? ` (${item.peso})` : ""} — ${formatCartPrice(item.precio * item.qty, item.currency)}`,
       )
       .join("\n");
+    const subtotals = Object.entries(totals).map(
+      ([currency, amount]) =>
+        `Subtotal (${currency}): ${formatCartPrice(amount, currency)}`,
+    );
     const subject = "Candle order";
     const body = [
       "Hello Lily Blossom Candles,",
       "",
       "I would like to place this order:",
       products,
-      `Subtotal: ${formatPrice(total)}`,
+      ...subtotals,
       "",
       "Delivery details:",
       `Name: ${formData.get("fullName")}`,

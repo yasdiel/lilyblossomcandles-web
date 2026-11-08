@@ -1,7 +1,6 @@
 export function formatPrice(value) {
   const number = Number(value);
-  if (!Number.isFinite(number)) return "$0";
-  return `$${Number.isInteger(number) ? number : number.toFixed(2)}`;
+  return euroFormatter.format(Number.isFinite(number) ? number : 0);
 }
 
 const euroFormatter = new Intl.NumberFormat("es-ES", {

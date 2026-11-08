@@ -4,15 +4,15 @@ export function useCart() {
   const [cart, setCart] = useState([]);
   const [isOpen, setIsOpen] = useState(false);
 
-  const addToCart = useCallback((product) => {
+  const addToCart = useCallback((product, quantity = 1) => {
     setCart((prev) => {
       const existing = prev.find((item) => item.id === product.id);
       if (existing) {
         return prev.map((item) =>
-          item.id === product.id ? { ...item, qty: item.qty + 1 } : item
+          item.id === product.id ? { ...item, qty: item.qty + quantity } : item
         );
       }
-      return [...prev, { ...product, qty: 1 }];
+      return [...prev, { ...product, qty: quantity }];
     });
   }, []);
 
@@ -34,8 +34,16 @@ export function useCart() {
     () => cart.reduce((sum, item) => sum + item.qty, 0),
     [cart]
   );
-  const total = useMemo(
-    () => cart.reduce((sum, item) => sum + item.precio * item.qty, 0),
+  const totals = useMemo(
+    () =>
+      cart.reduce(
+        (sum, item) => {
+          const currency = item.currency || "EUR";
+          sum[currency] = (sum[currency] || 0) + item.precio * item.qty;
+          return sum;
+        },
+        {},
+      ),
     [cart]
   );
 
@@ -48,6 +56,6 @@ export function useCart() {
     removeFromCart,
     updateQty,
     count,
-    total,
+    totals,
   };
 }

@@ -22,7 +22,7 @@ export default function Storefront() {
     removeFromCart,
     updateQty,
     count,
-    total,
+    totals,
   } = useCart();
   const [products, setProducts] = useState([]);
   const [catalogStatus, setCatalogStatus] = useState("loading");
@@ -105,7 +105,7 @@ export default function Storefront() {
           onRetry={retryCatalog}
           onAdd={addToCart}
         />
-        <Events events={events} status={eventsStatus} onRetry={retryEvents} />
+        <Events events={events} status={eventsStatus} onRetry={retryEvents} onAdd={addToCart} />
         <CustomScents />
         <ConsciousChoice />
       </main>
@@ -116,7 +116,7 @@ export default function Storefront() {
           onClick={openCart}
           className="font-body fixed bottom-5 left-1/2 z-30 flex -translate-x-1/2 items-center gap-3 rounded-full border border-[var(--cacao)] bg-[var(--cacao)] px-6 py-3 text-sm text-[var(--paper)] shadow-lg transition-transform hover:scale-[1.03] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-[var(--amber)]"
         >
-          Ver pedido
+          View order
           <span className="flex h-6 min-w-6 items-center justify-center rounded-full bg-[var(--paper)] px-1.5 text-xs text-[var(--cacao)]">
             {count}
           </span>
@@ -129,12 +129,12 @@ export default function Storefront() {
         onRemove={removeFromCart}
         onUpdateQty={updateQty}
         onCheckout={openCheckout}
-        total={total}
+        totals={totals}
       />
       <CheckoutDialog
         open={isCheckoutOpen}
         cart={cart}
-        total={total}
+        totals={totals}
         onClose={closeCheckout}
       />
     </div>
