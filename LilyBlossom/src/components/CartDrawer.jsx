@@ -2,7 +2,7 @@ import Candle from "./Candle";
 import { assetUrl } from "../lib/api";
 import { formatPrice } from "../lib/money";
 
-export function CartDrawer({ cart, isOpen, onClose, onRemove, onUpdateQty, total }) {
+export function CartDrawer({ cart, isOpen, onClose, onRemove, onUpdateQty, onCheckout, total }) {
   if (!isOpen) return null;
 
   return (
@@ -86,7 +86,9 @@ export function CartDrawer({ cart, isOpen, onClose, onRemove, onUpdateQty, total
           </div>
           <button
             type="button"
-            className="font-body w-full bg-[var(--cacao)] py-3.5 text-sm tracking-wide text-[var(--paper)] transition-all duration-300 hover:bg-transparent hover:text-[var(--cacao)] border border-[var(--cacao)]"
+            onClick={onCheckout}
+            disabled={cart.length === 0}
+            className="font-body w-full border border-[var(--cacao)] bg-[var(--cacao)] py-3.5 text-sm tracking-wide text-[var(--paper)] transition-all duration-300 hover:bg-transparent hover:text-[var(--cacao)] disabled:cursor-not-allowed disabled:opacity-50"
           >
             Checkout
           </button>

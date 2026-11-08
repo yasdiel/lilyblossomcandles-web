@@ -1,9 +1,10 @@
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { THEME } from "./theme";
 import { api } from "./lib/api";
 import { useCart } from "./hooks/useCart";
 import Contact from "./components/Contact";
 import CartDrawer from "./components/CartDrawer";
+import CheckoutDialog from "./components/CheckoutDialog";
 import Hero from "./sections/Hero";
 import About from "./sections/About";
 import Catalog from "./sections/Catalog";
@@ -27,6 +28,16 @@ export default function Storefront() {
   const [events, setEvents] = useState([]);
   const [eventsStatus, setEventsStatus] = useState("loading");
   const [eventsAttempt, setEventsAttempt] = useState(0);
+  const [isCheckoutOpen, setIsCheckoutOpen] = useState(false);
+
+  const openCheckout = useCallback(() => {
+    closeCart();
+    setIsCheckoutOpen(true);
+  }, [closeCart]);
+
+  const closeCheckout = useCallback(() => {
+    setIsCheckoutOpen(false);
+  }, []);
 
   useEffect(() => {
     let active = true;
@@ -103,7 +114,14 @@ export default function Storefront() {
         onClose={closeCart}
         onRemove={removeFromCart}
         onUpdateQty={updateQty}
+        onCheckout={openCheckout}
         total={total}
+      />
+      <CheckoutDialog
+        open={isCheckoutOpen}
+        cart={cart}
+        total={total}
+        onClose={closeCheckout}
       />
     </div>
   );
